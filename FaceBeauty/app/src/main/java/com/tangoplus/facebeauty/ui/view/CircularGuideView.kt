@@ -52,24 +52,6 @@ class CircularGuideView @JvmOverloads constructor(
             startIntroAnimation()
         }
     }
-//
-//    // 원의 크기 비율 설정 (0.1 ~ 0.8 권장)
-//    fun setCircleRadiusRatio(ratio: Float) {
-//        circleRadiusRatio = ratio.coerceIn(0.1f, 0.8f)
-//        invalidate()
-//    }
-//
-//    // 배경 어둠 정도 설정 (0.0 ~ 1.0)
-//    fun setBackgroundDarkness(darkness: Float) {
-//        backgroundDarkness = darkness.coerceIn(0f, 1f)
-//        invalidate()
-//    }
-//
-//    // 원의 세로 위치 설정 (-1.0 ~ 1.0)
-//    fun setVerticalBias(bias: Float) {
-//        verticalBias = bias.coerceIn(-1f, 1f)
-//        invalidate()
-//    }
 
     // 성공 애니메이션 시작
     fun startSuccessAnimation(onComplete: (() -> Unit)? = null) {
@@ -86,7 +68,7 @@ class CircularGuideView @JvmOverloads constructor(
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    onComplete?.invoke()
+                    if (successProgress == 1f) onComplete?.invoke()
                 }
             })
             start()

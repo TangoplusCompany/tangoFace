@@ -1,18 +1,15 @@
 package com.tangoplus.facebeauty.ui.view
 
 import android.content.Context
-import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.util.AttributeSet
-import android.util.Log
 import android.view.View
 import androidx.core.graphics.toColorInt
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
-import java.text.DecimalFormat
 import kotlin.math.max
 import kotlin.math.min
 

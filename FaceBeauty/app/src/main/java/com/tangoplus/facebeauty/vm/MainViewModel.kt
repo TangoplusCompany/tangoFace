@@ -26,7 +26,13 @@ class MainViewModel : ViewModel() {
             _minFacePresenceConfidence
     val currentMaxFaces: Int get() = _maxFaces
 
-    private var isFaceInCenterArea = false
+    private var isStartCountDown = false
+
+    private var isGuideTextAnimationFinished = false
+
+    private var isGuideTextChanged = false
+
+    private var isSeqFinished = false
 
     fun setDelegate(delegate: Int) {
         _delegate = delegate
@@ -46,10 +52,30 @@ class MainViewModel : ViewModel() {
         _maxFaces = maxResults
     }
 
-    fun setFaceCenterArea(isCenter: Boolean) {
-        isFaceInCenterArea = isCenter
+    fun setCountDownFlag(isStart: Boolean) {
+        isStartCountDown = isStart
     }
-    fun getFaceCenterArea(isCenter: Boolean) : Boolean {
-        return isFaceInCenterArea
+    fun getCountDownFlag() : Boolean {
+        return isStartCountDown
+    }
+
+    fun setTextAnimationFlag(isStart: Boolean) {
+        isGuideTextAnimationFinished = isStart
+    }
+    fun getTextAnimationFlag() : Boolean {
+        return isGuideTextAnimationFinished
+    }
+
+    fun setGuideTextFlag(isStart: Boolean) {
+        isGuideTextChanged = isStart
+    }
+    fun getGuideTextFlag() : Boolean {
+        return isGuideTextChanged
+    }
+    fun setSeqFinishedFlag(isStart: Boolean) {
+        isSeqFinished = isStart
+    }
+    fun getSeqFinishedFlag() : Boolean {
+        return isSeqFinished
     }
 }

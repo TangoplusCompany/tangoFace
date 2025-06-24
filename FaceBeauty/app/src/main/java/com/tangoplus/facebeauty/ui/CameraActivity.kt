@@ -14,11 +14,9 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.graphics.PointF
 import android.graphics.RectF
 import android.media.ExifInterface
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
@@ -32,7 +30,6 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -45,8 +42,6 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -55,8 +50,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import androidx.transition.ChangeBounds
-import androidx.transition.TransitionManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.tangoplus.facebeauty.R
@@ -64,6 +57,8 @@ import com.tangoplus.facebeauty.data.FaceResult
 import com.tangoplus.facebeauty.data.db.FaceDao
 import com.tangoplus.facebeauty.data.db.FaceDatabase
 import com.tangoplus.facebeauty.databinding.ActivityCameraBinding
+import com.tangoplus.facebeauty.ui.AnimationUtility.animateTextViewToTopLeft
+import com.tangoplus.facebeauty.ui.AnimationUtility.startBouncingAnimation
 import com.tangoplus.facebeauty.util.FileUtility.getRequiredPermissions
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.util.MathHelpers.calculateScaleFromPart
@@ -95,8 +90,6 @@ import com.tangoplus.facebeauty.util.MathHelpers.calculateAngle
 import com.tangoplus.facebeauty.util.PreferenceUtility
 import com.tangoplus.facebeauty.vm.GalleryViewModel
 import kotlin.math.abs
-import kotlin.math.acos
-import kotlin.math.atan2
 
 class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListener {
 
@@ -358,7 +351,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 show()
             }
         }
-        startBouncingAnimation(binding.tvSeqGuide)
+        startBouncingAnimation(bounceAnimator, binding.tvSeqGuide)
 //        binding.clSeqGuide.setOnSingleClickListener {
 ////            binding.clSeqGuide.clearAnimation()
 ////            binding.clSeqGuide.animate().cancel()
@@ -501,10 +494,10 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 val eyeDistanceGap = abs(leftEyeDistance - rightEyeDistance)
 
                 val horizontalLineVector = calculateAngle(leftEarPoint.x(), leftEarPoint.y(), noseTip.x(), noseTip.y(),rightEarPoint.x(), rightEarPoint.y())
-                val vertiBoolean = if (eyeDistanceGap < 0.35f) true else false
+                val vertiBoolean = if (eyeDistanceGap < 0.3f) true else false
                 binding.overlay.setVerti(vertiBoolean)
 
-                val horizonBoolean = horizontalLineVector in 125f..140f
+                val horizonBoolean = horizontalLineVector in 125f..145f
                 binding.overlay.setHorizon(horizonBoolean)
 //                Log.v("얼굴 중앙", "$isFaceCenter")
 //                Log.v("라인벡터", "코: ${faceLandmarks[0].x()}, ${faceLandmarks[0].y()}, 왼쪽눈: ${faceLandmarks[33].x()}, ${faceLandmarks[33].x()}, 오른쪽 눈: ${faceLandmarks[263].x()}, ${faceLandmarks[263].x()}")
@@ -523,29 +516,40 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
             // overlay 줌인과
 
-            if (ivm.isFinishInput && isFaceCenter && resultBundle.result.faceLandmarks().isNotEmpty()) {
-                bounceAnimator?.cancel()
-                bounceAnimator = null
-                binding.tvSeqGuide.animate().cancel()
-                binding.tvSeqGuide.clearAnimation()
-                binding.tvSeqGuide.translationY = 0f
-                binding.tvSeqGuide.text = "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요"
-
-                Handler(Looper.getMainLooper()).postDelayed({
-                    animateTextViewToTopLeft(binding.clSeqGuide, binding.tvSeqGuide)
-                }, 2000)
-
-                binding.fdgv.triggerIntroAnimationIfNeeded()
-                if (binding.overlay.getVerti() && binding.overlay.getHorizon()) {
-                    binding.fdgv.startSuccessAnimation {
-                        if (!isCountDown) {
-                            startTimer()
-                        }
-                    }
-                } else {
-                    binding.fdgv.resetSuccessMode()
+            if (ivm.isFinishInput && isFaceCenter && resultBundle.result.faceLandmarks().isNotEmpty() && !viewModel.getSeqFinishedFlag()) {
+                // 애니메이션 제거 flag
+                if (!viewModel.getGuideTextFlag()) {
+                    bounceAnimator?.cancel()
+                    bounceAnimator = null
+                    binding.tvSeqGuide.animate().cancel()
+                    binding.tvSeqGuide.clearAnimation()
+                    binding.tvSeqGuide.translationY = 0f
+                    binding.tvSeqGuide.text = "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요"
+                    viewModel.setGuideTextFlag(true)
                 }
+
+                // guideText 움직이기 flag
+                if (!viewModel.getTextAnimationFlag()) {
+                    Handler(Looper.getMainLooper()).postDelayed({
+
+                        animateTextViewToTopLeft(binding.clSeqGuide, binding.tvSeqGuide, 0.1f, 0.05f)
+                    }, 2000)
+                    viewModel.setTextAnimationFlag(true)
+                }
+                binding.fdgv.triggerIntroAnimationIfNeeded()
             }
+
+            if (ivm.isFinishInput && isFaceCenter && binding.overlay.getVerti() && binding.overlay.getHorizon() && !viewModel.getSeqFinishedFlag()) {
+                binding.fdgv.startSuccessAnimation {
+                    if (!isCountDown && !viewModel.getCountDownFlag()) {
+                        startTimer()
+                        viewModel.setCountDownFlag(true)
+                    }
+                }
+            } else {
+                binding.fdgv.resetSuccessMode()
+            }
+
         }
     }
 
@@ -576,7 +580,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     // -------------------------# 타이머, UI업데이트, 이미지캡처, 결과처리 #-----------------------------
     private fun hideViews() {
         binding.clCountDown.visibility = View.INVISIBLE
-        binding.btnShooting.visibility = View.VISIBLE
         startCameraShutterAnimation()
     }
 
@@ -609,22 +612,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         }, 0)
     }
 
-
-//    fun getFileNameFromUri(uri: Uri): String? {
-//        var fileName: String? = null
-//
-//        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-//            if (cursor.moveToFirst()) {
-//                val displayNameIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
-//                if (displayNameIndex != -1) {
-//                    fileName = cursor.getString(displayNameIndex)
-//                }
-//            }
-//        }
-//
-//        return fileName
-//    }
-
     private fun setGuideAnimation(seq: Int) {
         binding.btnShooting.isEnabled = false
         val slide = TranslateAnimation(0f, 0f, -100f, 0f)
@@ -642,6 +629,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             fillAfter = true
         }
         binding.tvSeqGuide.apply {
+            clearAnimation()
             text = when (seq) {
                 0 -> "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요"
                 1 -> "다음 단계는 교합 상태입니다\n이를 맞물리게 물고 입술을 벌려보세요"
@@ -651,70 +639,12 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             visibility = View.VISIBLE
             animation = animationSet
         }
-        val endDelay = when (seq) {
-            2 -> 2000L
-            else -> 3500L
-        }
-
-//        setAnimation(binding.tvSeqGuide, 500L, 0L, true) { }
-//        setAnimation(binding.tvSeqGuide, 800L, endDelay, false) {
-//            binding.btnShooting.isEnabled = true
-//        }
     }
+
+
     private fun isFaceInCenter(glabellaX: Float, glabellaY: Float): Boolean {
-        val targetRect = RectF(0.4f, 0.2f, 0.5f, 0.6f)
+        val targetRect = RectF(0.35f, 0.175f, 0.65f, 0.525f)
         return targetRect.contains(glabellaX, glabellaY)
-    }
-
-    private fun animateTextViewToTopLeft(clSeqGuide: ConstraintLayout, tvTarget: TextView) {
-        val constraintSet = ConstraintSet()
-        constraintSet.clone(clSeqGuide)
-
-        // Bias 변경
-        constraintSet.setHorizontalBias(tvTarget.id, 0.1f)
-        constraintSet.setVerticalBias(tvTarget.id, 0.05f)
-
-        // 애니메이션 설정
-        val transition = ChangeBounds().apply {
-            duration = 800
-            interpolator = AccelerateDecelerateInterpolator()
-        }
-
-        // 애니메이션 실행
-        TransitionManager.beginDelayedTransition(clSeqGuide, transition)
-        constraintSet.applyTo(clSeqGuide)
-    }
-    fun startBouncingAnimation(textView: TextView) {
-        val bounceDistance = -10 * textView.resources.displayMetrics.density
-
-        val upAnim = ObjectAnimator.ofFloat(textView, "translationY", 0f, bounceDistance).apply {
-            duration = 300
-            interpolator = AccelerateDecelerateInterpolator()
-        }
-
-        val downAnim = ObjectAnimator.ofFloat(textView, "translationY", bounceDistance, 0f).apply {
-            duration = 300
-            interpolator = AccelerateDecelerateInterpolator()
-        }
-
-        bounceAnimator = AnimatorSet().apply {
-            playSequentially(upAnim, downAnim)
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    // 애니메이션이 취소된 경우 반복하지 않음
-                    if (!isCancelled) {
-                        start()
-                    }
-                }
-
-                var isCancelled = false
-
-                override fun onAnimationCancel(animation: Animator) {
-                    isCancelled = true
-                }
-            })
-            start()
-        }
     }
 
     // ------! 타이머 control 시작 !------
@@ -730,39 +660,33 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     private fun updateUI() {
         when (seqStep.value) {
             maxSeq -> {
+                setGuideAnimation(2)
                 binding.clCountDown.visibility = View.GONE
-
-                binding.btnShooting.text = "결과보기"
+                binding.btnShooting.apply {
+                    visibility = View.VISIBLE
+                    text = "결과보기"
+                    isEnabled = true
+                }
                 mCountDown.cancel()
                 Log.v("몇단계?", "Max repeats reached, stopping the loop")
-                setGuideAnimation(2)
+
             }
             else -> {
                 seqStep.value = seqStep.value?.plus(1)
-                binding.tvSeqCount.text = "${seqStep.value?.plus(1)} / 2"
                 setGuideAnimation(1)
+                binding.tvSeqCount.text = "${seqStep.value?.plus(1)} / 2"
+                viewModel.setCountDownFlag(false)
+                binding.fdgv.resetSuccessMode()
             }
         }
+        viewModel.setSeqFinishedFlag(true)
+        Handler(Looper.getMainLooper()).postDelayed({
+            viewModel.setSeqFinishedFlag(false)
+        }, 500)
         isCountDown = false
         binding.tvGoGallery.isEnabled = true
     }
 
-
-    private fun setAnimation(tv: View, duration : Long, delay: Long, fade: Boolean, callback: () -> Unit) {
-
-        val animator = ObjectAnimator.ofFloat(tv, "alpha", if (fade) 0f else 1f, if (fade) 1f else 0f)
-        animator.duration = duration
-        animator.addListener(object: AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                super.onAnimationEnd(animation)
-                tv.visibility = if (fade) View.VISIBLE else View.INVISIBLE
-                callback()
-            }
-        })
-        Handler(Looper.getMainLooper()).postDelayed({
-            animator.start()
-        }, delay)
-    }
     private var permissionDialog: AlertDialog? = null
     private fun showPermissionExplanationDialog() {
         if (permissionDialog?.isShowing == true) return  // 이미 다이얼로그가 떠 있으면 return
@@ -1097,6 +1021,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         binding.btnShooting.apply {
             text = "촬영"
             isEnabled = true
+            visibility = View.INVISIBLE
         }
         binding.tvSeqCount.text = "1 / 2"
         mvm.static0FileName = null
@@ -1116,6 +1041,12 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         val inputDialog = TextInputDialogFragment()
         inputDialog.show(supportFragmentManager, "")
         seqStep.value = 0
+
+        // flat 초기화
+        viewModel.setSeqFinishedFlag(false)
+        viewModel.setGuideTextFlag(false)
+        viewModel.setCountDownFlag(false)
+        viewModel.setTextAnimationFlag(false)
     }
 
     private fun calculateScreenX(xx: Float): Float {
