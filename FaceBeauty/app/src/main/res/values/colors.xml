@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="axis100">#802EE88B</color>
+    <color name="axis200">#802EE88B</color>
+    <color name="axis300">#8000FF00</color>
+
+    <color name="axisSub">#80FA8700</color>
+    <color name="axis900">#80FF2819</color>
+    <color name="whiteText">#FFFFFF</color>
+    <color name="mainColor">#2617FF</color>
+    <color name="deleteColor">#FF5449</color>
+    <color name="warningColor">#33F48600</color>
+    <color name="dangerColor">#33F40000</color>
+
+
+    <color name="subColor100">#F6F6F6</color>
+    <color name="subColor150">#DFDFE0</color>
+    <color name="subColor200">#D9D9D9</color>
+    <color name="subColor300">#C8C8C8</color>
+    <color name="subColor400">#AEAEAE</color>
+    <color name="subColor500">#959595</color>
+    <color name="subColor700">#757575</color>
+    <color name="subColor800">#47484C</color>
+    <color name="rippleColor">#80F6F6F6</color>
+</resources>
