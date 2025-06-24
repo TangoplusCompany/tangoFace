@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/flTID"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.TextInputDialogFragment">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/white">
+
+        <TextView
+            android:id="@+id/tvTIDSkip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="32dp"
+            android:padding="6dp"
+            android:text="SKIP"
+            android:textColor="@color/black"
+            android:textSize="24dp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@+id/tvTIDGuide"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/tvTIDGuide" />
+
+        <TextView
+            android:id="@+id/tvTIDGuide"
+            android:layout_width="0dp"
+            android:layout_height="92dp"
+            android:layout_margin="40dp"
+            android:text="안녕하세요\n분석을 위해 성함을 입력해주세요"
+            android:textColor="@color/black"
+            android:textSize="36dp"
+            app:layout_constraintEnd_toStartOf="@+id/tvTIDSkip"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <EditText
+            android:id="@+id/etTIDName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="40dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="40dp"
+            android:ems="10"
+            android:hint="이름"
+            android:inputType="text"
+            android:paddingTop="20dp"
+            android:paddingBottom="20dp"
+            android:singleLine="true"
+            android:textColor="@color/black"
+            android:textColorHint="@color/subColor200"
+            android:textSize="28dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tvTIDGuide" />
+
+        <EditText
+            android:id="@+id/etTIDMobile"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="40dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="40dp"
+            android:ems="10"
+            android:hint="휴대폰 번호"
+            android:inputType="phone"
+            android:paddingTop="20dp"
+            android:paddingBottom="20dp"
+            android:singleLine="true"
+            android:textColor="@color/black"
+            android:textColorHint="@color/subColor200"
+            android:textSize="28dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/etTIDName" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnTIDSave"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/effect_ibtn"
+            android:backgroundTint="@color/black"
+            android:padding="16dp"
+            android:text="저장"
+            android:textColor="@color/white"
+            android:textSize="24dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</FrameLayout>
