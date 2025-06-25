@@ -34,6 +34,7 @@ class MainViewModel : ViewModel() {
 
     private var isSeqFinished = false
 
+
     fun setDelegate(delegate: Int) {
         _delegate = delegate
     }

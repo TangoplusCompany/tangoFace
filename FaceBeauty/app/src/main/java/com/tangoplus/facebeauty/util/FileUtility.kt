@@ -235,7 +235,7 @@ object FileUtility {
             style = Paint.Style.STROKE
         }
         val axisSubPaint = Paint().apply {
-            color = "#80FA8700".toColorInt()
+            color = "#8000FF00".toColorInt()
             strokeWidth = strokeWidthh
             strokeCap = Paint.Cap.ROUND
             style = Paint.Style.STROKE

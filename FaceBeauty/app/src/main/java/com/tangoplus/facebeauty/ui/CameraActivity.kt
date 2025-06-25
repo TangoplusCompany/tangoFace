@@ -48,6 +48,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -159,7 +160,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     if (seqStep.value != null) {
                         playSound(R.raw.camera_shutter)
                         captureImage(seqStep.value ?: -1) {
-
+                            viewModel.setSeqFinishedFlag(true)
                             updateUI()
                         }
                     }
@@ -494,13 +495,21 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 val eyeDistanceGap = abs(leftEyeDistance - rightEyeDistance)
 
                 val horizontalLineVector = calculateAngle(leftEarPoint.x(), leftEarPoint.y(), noseTip.x(), noseTip.y(),rightEarPoint.x(), rightEarPoint.y())
-                val vertiBoolean = if (eyeDistanceGap < 0.3f) true else false
-                binding.overlay.setVerti(vertiBoolean)
+                val vertiBoolean = if (eyeDistanceGap < 0.275f) true else false
 
-                val horizonBoolean = horizontalLineVector in 125f..145f
+
+                val horizonBoolean = horizontalLineVector in 125f..149f
                 binding.overlay.setHorizon(horizonBoolean)
 //                Log.v("얼굴 중앙", "$isFaceCenter")
 //                Log.v("라인벡터", "코: ${faceLandmarks[0].x()}, ${faceLandmarks[0].y()}, 왼쪽눈: ${faceLandmarks[33].x()}, ${faceLandmarks[33].x()}, 오른쪽 눈: ${faceLandmarks[263].x()}, ${faceLandmarks[263].x()}")
+
+                val eyeSlope = calculateSlope(leftEye.x(), leftEye.y(), rightEye.x(), rightEye.y())
+                val eyeParallel = (eyeSlope in 176.5f..181f) || (eyeSlope in -181f .. -176.5f)
+
+                val vertiMediator = vertiBoolean && eyeParallel
+
+//                Log.v("eye평행", "$eyeSlope ${eyeParallel}, ${vertiBoolean}, ")
+                binding.overlay.setVerti(vertiMediator)
             }
 
             binding.overlay.setResults(
@@ -524,7 +533,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     binding.tvSeqGuide.animate().cancel()
                     binding.tvSeqGuide.clearAnimation()
                     binding.tvSeqGuide.translationY = 0f
-                    binding.tvSeqGuide.text = "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요"
+                    binding.tvSeqGuide.text = "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요\n게이지가 차면 자동으로 촬영을 시작합니다 !"
                     viewModel.setGuideTextFlag(true)
                 }
 
@@ -539,17 +548,21 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 binding.fdgv.triggerIntroAnimationIfNeeded()
             }
 
-            if (ivm.isFinishInput && isFaceCenter && binding.overlay.getVerti() && binding.overlay.getHorizon() && !viewModel.getSeqFinishedFlag()) {
+            if (
+                ivm.isFinishInput &&
+                isFaceCenter &&
+                !viewModel.getSeqFinishedFlag() &&
+                binding.overlay.getVerti() &&
+                binding.overlay.getHorizon()
+                ) {
                 binding.fdgv.startSuccessAnimation {
                     if (!isCountDown && !viewModel.getCountDownFlag()) {
                         startTimer()
-                        viewModel.setCountDownFlag(true)
                     }
                 }
             } else {
                 binding.fdgv.resetSuccessMode()
             }
-
         }
     }
 
@@ -631,7 +644,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         binding.tvSeqGuide.apply {
             clearAnimation()
             text = when (seq) {
-                0 -> "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요"
+                0 -> "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요\n게이지가 차면 자동으로 촬영을 시작합니다 !"
                 1 -> "다음 단계는 교합 상태입니다\n이를 맞물리게 물고 입술을 벌려보세요"
                 2 -> "수고하셨습니다\n버튼을 눌러 결과를 확인해보세요"
                 else -> ""
@@ -654,6 +667,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         binding.tvGoGallery.isEnabled = false
         Log.v("seqStep", "${seqStep.value} / 2")
         mCountDown.start()
+        viewModel.setCountDownFlag(true)
         // ------! 타이머 control 끝 !------
     }
 
@@ -679,10 +693,10 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 binding.fdgv.resetSuccessMode()
             }
         }
-        viewModel.setSeqFinishedFlag(true)
+
         Handler(Looper.getMainLooper()).postDelayed({
             viewModel.setSeqFinishedFlag(false)
-        }, 500)
+        }, 1500)
         isCountDown = false
         binding.tvGoGallery.isEnabled = true
     }

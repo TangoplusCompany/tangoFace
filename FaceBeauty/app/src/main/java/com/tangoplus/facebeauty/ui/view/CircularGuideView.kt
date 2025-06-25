@@ -149,8 +149,10 @@ class CircularGuideView @JvmOverloads constructor(
 
         // ✅ 2. Face ID 스타일 원형 선들 그리기
         for (i in 0 until numLines) {
-            val angleDeg = i * (360f / numLines)
-            if (angleDeg > progressAngle) break
+            val rawAngleDeg = i * (360f / numLines)
+            val angleDeg = rawAngleDeg - 90f  // 시작 각도를 12시 방향으로 보정
+
+            if (rawAngleDeg > progressAngle) break  // 비교는 기존 각도로
 
             val angleRad = Math.toRadians(angleDeg.toDouble())
 
