@@ -40,6 +40,7 @@ import org.json.JSONObject
 import java.io.FileNotFoundException
 import kotlin.coroutines.resume
 import kotlin.math.abs
+import androidx.core.graphics.createBitmap
 
 object FileUtility {
 
@@ -181,12 +182,10 @@ object FileUtility {
                             isSet = true
                             // 가로비율은 2배로 확대 세로 비율은 그대로 보여주기
                             val upscaledBitmap = if (isZoomIn) upscaleImage(combinedBitmap, 1.3f) else combinedBitmap
+                            val isMirrored = createMirroredOverlayImage(upscaledBitmap, false)
                             ssiv.setImage(ImageSource.bitmap(upscaledBitmap))
                             ssiv.maxScale = 3.5f
                             ssiv.minScale = 1f
-//                            ssiv.setMinimumScaleType(SubsamplingScaleImageView.SCALE_TYPE_CENTER_CROP)
-//                            ssiv.setScaleAndCenter(scaleFactorY, PointF(ssiv.sWidth / 2f, ssiv.sHeight / 2f))
-
                             continuation.resume(true)
                         }
                     }
@@ -210,6 +209,35 @@ object FileUtility {
             Log.e("scalingError", "Exception: ${e.printStackTrace()}" )
         }
     }
+
+    fun createMirroredOverlayImage(original: Bitmap, isLeftFlip: Boolean): Bitmap {
+        val width = original.width
+        val height = original.height
+        val halfWidth = width / 2
+
+        // 1. 오른쪽 절반 자르기
+        val rightHalf = Bitmap.createBitmap(original, if (isLeftFlip) 0 else halfWidth, 0, halfWidth, height)
+
+        // 2. 좌우 반전
+        val matrix = Matrix().apply {
+            preScale(-1f, 1f)
+        }
+        val flipped = Bitmap.createBitmap(rightHalf, 0, 0, rightHalf.width, rightHalf.height, matrix, true)
+
+        // 3. 알파값 적용 (50%)
+        val alphaBitmap = createBitmap(flipped.width, flipped.height)
+        val canvasAlpha = Canvas(alphaBitmap)
+        val paint = Paint().apply { alpha = 128 } // 128 out of 255 = 50%
+        canvasAlpha.drawBitmap(flipped, 0f, 0f, paint)
+
+        val result = original.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(result)
+        val x = if (isLeftFlip) (width - halfWidth).toFloat() else 0f  // 오른쪽 끝 위치
+        canvas.drawBitmap(alphaBitmap, x, 0f, null)
+
+        return result
+    }
+
 
     private val strokeWidthh = 5.5f
     fun combineImageAndOverlay (
@@ -310,7 +338,24 @@ object FileUtility {
 
         // 어느쪽이 안 좋은지 볼 부위 색 넣기
         val cheekIndexes = when  {
-            warningPoint > 0 -> listOf(123, 50, 207, 212, 202, 204, 194, 201, 208, 171, 140, 170, 169, 135, 192, 123,) // 왼쪽
+            warningPoint > 0 -> listOf(
+                123,
+                50,
+                207,
+                212,
+                202,
+                204,
+                194,
+                201,
+                208,
+                171,
+                140,
+                170,
+                169,
+                135,
+                192,
+                123
+            ) // 왼쪽
             warningPoint < 0 -> listOf(352, 280, 427, 432, 422, 424, 418, 421, 428, 396, 369, 395, 394, 364, 416, 352) // 오른쪽
             else  -> listOf()
         }
@@ -854,18 +899,18 @@ object FileUtility {
         nsv.smoothScrollTo(0, scrollTo)
     }
 
-    private fun isRestingWorse(fcItem : FaceComparisonItem?) : Boolean {
-        Log.v("비교확인", "$fcItem")
-        return if (fcItem != null) {
-            if (abs(fcItem.restingValue) < abs(fcItem.occlusalValue)) {
-                false
-            } else {
-                true
-            }
-        } else {
-            true
-        }
-    }
+//    private fun isRestingWorse(fcItem : FaceComparisonItem?) : Boolean {
+//        Log.v("비교확인", "$fcItem")
+//        return if (fcItem != null) {
+//            if (abs(fcItem.restingValue) < abs(fcItem.occlusalValue)) {
+//                false
+//            } else {
+//                true
+//            }
+//        } else {
+//            true
+//        }
+//    }
     private fun getAngleLevel(value: Float?, type: DrawLine): Int {
         Log.v("값", "$value $type")
         val absValue = 180f - abs(value ?: 0f)
@@ -874,21 +919,21 @@ object FileUtility {
             DrawLine.A_EYE -> {
                 when {
                     absValue <= 1.2f -> 0
-                    absValue <= 2.2f -> 1
+                    absValue <= 2.1f -> 1
                     else -> 2
                 }
             }
             DrawLine.A_EARFLAP -> {
                 when {
                     absValue <= 1.2f -> 0
-                    absValue <= 2.5f -> 1
+                    absValue <= 2.25f -> 1
                     else -> 2
                 }
             }
             DrawLine.A_TIP_OF_LIPS -> {
                 when {
                     absValue <= 1.8f -> 0
-                    absValue <= 3.5f -> 1
+                    absValue <= 3.2f -> 1
                     else -> 2
                 }
             }

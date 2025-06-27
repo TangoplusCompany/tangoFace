@@ -35,12 +35,12 @@ object AnimationUtility {
         val bounceDistance = -10 * tv.resources.displayMetrics.density
 
         val upAnim = ObjectAnimator.ofFloat(tv, "translationY", 0f, bounceDistance).apply {
-            duration = 300
+            duration = 400
             interpolator = AccelerateDecelerateInterpolator()
         }
 
         val downAnim = ObjectAnimator.ofFloat(tv, "translationY", bounceDistance, 0f).apply {
-            duration = 300
+            duration = 400
             interpolator = AccelerateDecelerateInterpolator()
         }
 
@@ -48,9 +48,11 @@ object AnimationUtility {
             playSequentially(upAnim, downAnim)
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    if (!isCancelled) {
-                        start()
-                    }
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        if (!isCancelled) {
+                            start()
+                        }
+                    }, 1000) // 1초 딜레이
                 }
                 var isCancelled = false
                 override fun onAnimationCancel(animation: Animator) {
@@ -60,6 +62,8 @@ object AnimationUtility {
             start()
         }
     }
+
+
     fun animateTextViewToTopLeft(cl: ConstraintLayout, tv: View, endVerti: Float = 0.5f, endHorizon: Float = 0.5f) {
         val constraintSet = ConstraintSet()
         constraintSet.clone(cl)

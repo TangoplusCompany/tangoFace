@@ -54,7 +54,7 @@ android {
     }
 
 }
-
+//noinspection UseTomlInstead
 dependencies {
     implementation("com.davemorrissey.labs:subsampling-scale-image-view:3.10.0")
     implementation("com.github.skydoves:progressview:1.1.3")
@@ -67,8 +67,8 @@ dependencies {
     implementation("androidx.fragment:fragment-ktx:1.5.4")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.facebook.shimmer:shimmer:0.5.0")
-
-
+    implementation("com.github.skydoves:balloon:1.6.4")
+    implementation("com.airbnb.android:lottie:6.4.0")
 
     val camera_version = "1.4.1"
     implementation("androidx.camera:camera-core:$camera_version")

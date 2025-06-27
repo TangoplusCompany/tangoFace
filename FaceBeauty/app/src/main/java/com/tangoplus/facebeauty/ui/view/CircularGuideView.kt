@@ -37,7 +37,7 @@ class CircularGuideView @JvmOverloads constructor(
     private var successAnimator: ValueAnimator? = null
 
     // 원의 크기를 화면 대비 비율로 설정 (0.0 ~ 1.0)
-    private var circleRadiusRatio = 0.6f // 기본값: 화면 최소 크기의 30%
+    private var circleRadiusRatio = 0.65f // 기본값: 화면 최소 크기의 30%
 
     // 배경 어둠 정도 설정
     private var backgroundDarkness = 0.7f // 0.0 ~ 1.0 (0: 투명, 1: 완전 어둠)
@@ -85,18 +85,18 @@ class CircularGuideView @JvmOverloads constructor(
 
     private val linePaint = Paint().apply {
         color = Color.LTGRAY
-        strokeWidth = dpToPx(1.5f)
+        strokeWidth = dpToPx(2f)
         isAntiAlias = true
     }
 
     // 성공 상태용 페인트
     private val successPaint = Paint().apply {
-        strokeWidth = dpToPx(1.5f)
+        strokeWidth = dpToPx(2f)
         isAntiAlias = true
     }
 
     private val numLines = 120
-    private val lineLength = dpToPx(15f)
+    private val lineLength = dpToPx(20f)
 
     private var progressAngle = 0f // 0~360도
 

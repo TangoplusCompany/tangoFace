@@ -1,6 +1,10 @@
 package com.tangoplus.facebeauty.ui
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.Paint
 import android.icu.text.DecimalFormat
 import android.net.Uri
 import android.os.Bundle
@@ -32,6 +36,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import androidx.core.view.isVisible
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.skydoves.balloon.ArrowPositionRules
+import com.skydoves.balloon.Balloon
+import com.skydoves.balloon.BalloonAnimation
+import com.skydoves.balloon.BalloonSizeSpec
+import com.skydoves.balloon.showAlignTop
 import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.data.DrawLine
 import com.tangoplus.facebeauty.data.DrawRatioLine
@@ -49,7 +58,7 @@ import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
 import com.tangoplus.facebeauty.util.MathHelpers.calculateRatios
 
-class GalleryDialogFragment : DialogFragment(), OnMeasureClickListener, OnFaceStaticCheckListener, OnAdapterMoreClickListener {
+class GalleryDialogFragment : DialogFragment(), OnMeasureClickListener {
     private lateinit var binding : FragmentGalleryDialogBinding
     private val mvm : MeasureViewModel by activityViewModels()
     private val ivm : InputViewModel by activityViewModels()
@@ -75,45 +84,47 @@ class GalleryDialogFragment : DialogFragment(), OnMeasureClickListener, OnFaceSt
         super.onViewCreated(view, savedInstanceState)
 
         // 초기 셋업
-        binding.clGDImage.visibility = View.GONE
+
         binding.clGDList.visibility = View.VISIBLE
         initShimmer()
-        gvm.isShowResult.observe(viewLifecycleOwner) { isFinish ->
-            when (isFinish) {
-                true -> {
-                    setChangeUI()
-                    showDetailResult()
-                }
-                false -> {
-                    showListResult()
-                }
-            }
-        }
+        showListResult()
+
+//        gvm.isShowResult.observe(viewLifecycleOwner) { isFinish ->
+//            when (isFinish) {
+//                true -> {
+//                    setChangeUI()
+//                    showDetailResult()
+//                }
+//                false -> {
+//                    showListResult()
+//                }
+//            }
+//        }
 
         binding.ibtnGDBack.setOnSingleClickListener {
-            val isListVisible = binding.clGDList.isVisible
-            if (isListVisible) {
-                // 결과보기 였을 경우
-                if (gvm.isShowResult.value == true) {
-                    MaterialAlertDialogBuilder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog).apply {
-                        setTitle("알림")
-                        setMessage("측정을 다시 시작하시겠습니까?")
-                        setPositiveButton("예") { _,_ ->
-                            mvm.initMeasure.value = true
-                            dismiss()
-                        }
-                        setNegativeButton("아니오") { _, _ -> }
-                        show()
-                    }
-                } else {
+            MaterialAlertDialogBuilder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog).apply {
+                setTitle("알림")
+                setMessage("측정을 다시 시작하시겠습니까?")
+                setPositiveButton("예") { _,_ ->
+                    mvm.initMeasure.value = true
                     dismiss()
                 }
-            } else {
-                setChangeUI()
+                setNegativeButton("아니오") { _, _ -> }
+                show()
             }
+
+//            val isListVisible = binding.clGDList.isVisible
+//            if (isListVisible) {
+//                // 결과보기 였을 경우
+//                if (gvm.isShowResult.value == true) {
+//
+//                } else {
+//                    dismiss()
+//                }
+//            } else {
+//                setChangeUI()
+//            }
         }
-
-
     }
 
     private fun setAdapter() {
@@ -189,28 +200,6 @@ class GalleryDialogFragment : DialogFragment(), OnMeasureClickListener, OnFaceSt
         }
     }
 
-    private fun setChangeUI() {
-        val isListVisible = binding.clGDList.isVisible
-
-        when (isListVisible) {
-            true -> {
-                // 선택 후 이미지 보이기
-                binding.clGDList.visibility = View.GONE
-                binding.clGDImage.visibility = View.VISIBLE
-                showDetailResult()
-            }
-            false -> {
-                binding.clGDList.visibility = View.VISIBLE
-                binding.clGDImage.visibility = View.GONE
-                showListResult()
-
-                // 선택한 체크박스 초기화
-                gvm.currentCheckedLines.clear()
-                binding.msGD.isChecked = false
-            }
-        }
-
-    }
     private fun showListResult() {
         lifecycleScope.launch(Dispatchers.IO) {
             val fd = FaceDatabase.getDatabase(requireContext())
@@ -232,153 +221,12 @@ class GalleryDialogFragment : DialogFragment(), OnMeasureClickListener, OnFaceSt
             }
         }
     }
-
-    private fun showDetailResult() {
-        binding.ssiv1.recycle()
-        binding.ssiv2.recycle()
-
-        val faceStaticJson0 = gvm.currentResult.value?.results?.getJSONObject(0)?.getJSONObject("data")
-        val faceStatic0 = faceStaticJson0.toFaceStatic()
-        Log.v("스태틱가져오기", "0: $faceStaticJson0")
-        val faceStaticJson1 = gvm.currentResult.value?.results?.getJSONObject(1)?.getJSONObject("data")
-        val faceStatic1 = faceStaticJson1.toFaceStatic()
-        Log.v("스태틱가져오기", "1: $faceStaticJson1")
-
-        gvm.currentFaceComparision = buildFaceComparisonList(faceStatic0, faceStatic1).toMutableList()
-        gvm.currentFaceComparision.apply {
-//            add(0, FaceComparisonItem("", 0f, 0f, type = RVItemType.TITLE))
-//            add(0, FaceComparisonItem("", 0f, 0f, type = RVItemType.TITLE))
-        }
-        Log.v("staticDatas", "${gvm.currentFaceComparision}")
-
-        val faceStaticAdapter = FaceStaticRVAdapter(gvm.currentFaceComparision)
-
-        binding.msGD.setOnCheckedChangeListener { _, isChecked ->
-            // 리스너 동작
-            setLinesInImage(isChecked)
-            faceStaticAdapter.setAllChecked(isChecked)
-        }
-
-        binding.rvGD2.apply {
-            while (itemDecorationCount > 0) {
-                removeItemDecorationAt(0)
-            }
-            val spacingPx = (10 * resources.displayMetrics.density).toInt()
-            val specialSpacingPx = (30 * resources.displayMetrics.density).toInt()
-
-            val specialRows = setOf(3) // row index 기준: 0부터 시작
-            addItemDecoration(GridSpacingItemDecoration(
-                spanCount = 3,
-                spacingPx = spacingPx,
-                includeEdge = true,
-                specialRowSpacingPx  = specialSpacingPx,
-                specialRows  = specialRows
-            ))
-
-            faceStaticAdapter.faceStaticCheckListener = this@GalleryDialogFragment
-            faceStaticAdapter.adapterMoreClickedListener = this@GalleryDialogFragment
-            val layoutManagerr = GridLayoutManager(requireContext(), 3)
-            layoutManager = layoutManagerr
-            layoutManagerr.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                override fun getSpanSize(position: Int): Int {
-                    return when (faceStaticAdapter.getItemViewType(position)) {
-                        FaceStaticRVAdapter.TYPE_MORE -> 3 // 더보기 버튼은 전체 차지
-                        else -> 1 // 일반 아이템은 1칸만 차지
-                    }
-                }
-            }
-
-//            Log.v("어댑터데이터", "${gvm.currentFaceResults}")
-
-            adapter  = faceStaticAdapter
-        }
-        setImage()
-        showZoomInDialogFragment()
-        setRatioCheckSwitch()
-    }
-
-    fun buildFaceComparisonList(resting: FaceStatic, occlusal: FaceStatic): List<FaceComparisonItem> {
-        return listOf(
-            FaceComparisonItem("눈 수평 각도", resting.resting_eye_horizontal_angle, occlusal.occlusal_eye_horizontal_angle),
-            FaceComparisonItem("귓바퀴 수평 각도", resting.resting_earflaps_horizontal_angle, occlusal.occlusal_earflaps_horizontal_angle),
-            FaceComparisonItem("입술 끝 수평 각도", resting.resting_tip_of_lips_horizontal_angle, occlusal.occlusal_tip_of_lips_horizontal_angle),
-            FaceComparisonItem("미간-코 수직 각도", resting.resting_glabella_nose_vertical_angle, occlusal.occlusal_glabella_nose_vertical_angle),
-            FaceComparisonItem("코-턱 수직 각도", resting.resting_nose_chin_vertical_angle, occlusal.occlusal_nose_chin_vertical_angle),
-            FaceComparisonItem("좌측 귓바퀴-콧망울 수평 각도", resting.resting_left_earflaps_nasal_wing_horizontal_angle, occlusal.occlusal_left_earflaps_nasal_wing_horizontal_angle),
-            FaceComparisonItem("우측 귓바퀴-콧망울 수평 각도", resting.resting_right_earflaps_nasal_wing_horizontal_angle, occlusal.occlusal_right_earflaps_nasal_wing_horizontal_angle),
-            FaceComparisonItem("좌측 귓바퀴-코 거리", resting.resting_left_earflaps_nose_distance, occlusal.occlusal_left_earflaps_nose_distance),
-            FaceComparisonItem("우측 귓바퀴-코 거리", resting.resting_right_earflaps_nose_distance, occlusal.occlusal_right_earflaps_nose_distance),
-            FaceComparisonItem("좌측 입꼬리-입술 중앙 거리", resting.resting_left_tip_of_lips_center_lips_distance, occlusal.occlusal_left_tip_of_lips_center_lips_distance),
-            FaceComparisonItem("우측 입꼬리-입술 중앙 거리", resting.resting_right_tip_of_lips_center_lips_distance, occlusal.occlusal_right_tip_of_lips_center_lips_distance),
-        )
-    }
-
     override fun onMeasureClick(tempServerSn: Int) {
         gvm.currentResult.value = gvm.currentFaceResults.find { it.tempServerSn == tempServerSn }
-        setChangeUI()
         scrollToView(binding.ibtnGDBack, binding.nsvGD)
-    }
 
-    override fun onFaceStaticCheck(drawLineIndex: Int, isChecked: Boolean) {
-        val selectedLine = when (drawLineIndex) {
-            0 -> DrawLine.A_EYE
-            1 -> DrawLine.A_EARFLAP
-            2 -> DrawLine.A_TIP_OF_LIPS
-            3 -> DrawLine.A_GLABELLA_NOSE
-            4 -> DrawLine.A_NOSE_CHIN
-            5 -> DrawLine.A_EARFLAP_NASAL_WING
-            6 -> DrawLine.A_EARFLAP_NASAL_WING
-            7 -> DrawLine.D_EARFLAP_NOSE
-            8 -> DrawLine.D_EARFLAP_NOSE
-            9 -> DrawLine.D_TIP_OF_LIPS_CENTER_LIPS
-            10 -> DrawLine.D_TIP_OF_LIPS_CENTER_LIPS
-            else -> DrawLine.A_EYE
-        }
-        when (isChecked) {
-            true -> gvm.currentCheckedLines.add(selectedLine)
-            false -> gvm.currentCheckedLines.remove(selectedLine)
-        }
-        Log.v("체크", "$drawLineIndex, $isChecked / $selectedLine ${gvm.currentCheckedLines}")
-        setImage()
-    }
-    private fun setImage() {
-        lifecycleScope.launch {
-            Log.v("체크", "setImage: ${gvm.currentCheckedRatioLines}")
-            gvm.currentResult.value?.let { setImage(this@GalleryDialogFragment, it, 0, binding.ssiv1, gvm) }
-            gvm.currentResult.value?.let { setImage(this@GalleryDialogFragment, it, 1, binding.ssiv2, gvm) }
-        }
-    }
-
-    private fun showZoomInDialogFragment() {
-        binding.ssiv1.setOnLongClickListener {
-            val zoomInDialog = ZoomInDialogFragment.newInstance(0)
-            zoomInDialog.show(requireActivity().supportFragmentManager, "")
-            true
-        }
-        binding.ssiv2.setOnLongClickListener {
-            val zoomInDialog = ZoomInDialogFragment.newInstance(1)
-            zoomInDialog.show(requireActivity().supportFragmentManager, "")
-            true
-        }
-    }
-
-    private fun setLinesInImage(switchedOn: Boolean) {
-        when (switchedOn) {
-            true -> {
-                gvm.currentCheckedLines.add(DrawLine.A_EYE)
-                gvm.currentCheckedLines.add(DrawLine.A_EARFLAP)
-                gvm.currentCheckedLines.add(DrawLine.A_TIP_OF_LIPS)
-//                gvm.currentCheckedLines.add(DrawLine.A_GLABELLA_NOSE)
-//                gvm.currentCheckedLines.add(DrawLine.A_NOSE_CHIN)
-//                gvm.currentCheckedLines.add(DrawLine.A_EARFLAP_NASAL_WING)
-//                gvm.currentCheckedLines.add(DrawLine.D_EARFLAP_NOSE)
-//                gvm.currentCheckedLines.add(DrawLine.D_TIP_OF_LIPS_CENTER_LIPS)
-            }
-            false -> {
-                gvm.currentCheckedLines.clear()
-            }
-        }
-        setImage()
+        val infoDialog = InformationDialogFragment()
+        infoDialog.show(requireActivity().supportFragmentManager, null)
     }
 
     private fun initShimmer() {
@@ -395,65 +243,4 @@ class GalleryDialogFragment : DialogFragment(), OnMeasureClickListener, OnFaceSt
         }
     }
 
-    private fun setRatioCheckSwitch() {
-        val df = DecimalFormat("#.#")
-        // 값 적기
-        val jsonData = gvm.currentResult.value?.results?.getJSONObject(0)
-        val coordinates = extractImageCoordinates(jsonData)
-        if (coordinates != null) {
-            val vertiIndices = listOf(234, 33, 133, 362, 263, 356)
-            val vertiCoordinates = vertiIndices.map { coordinates[it] }
-            Log.v("vertiCoordinates", "$vertiCoordinates")
-            val horizonIndices = listOf(8, 2, 13, 152)
-            val horizonCoordinates = horizonIndices.map { coordinates[it] }
-            Log.v("horizonCoordinates", "$horizonCoordinates")
-            val vertiText = calculateRatios(vertiCoordinates, true)
-            val horizonText = calculateRatios(horizonCoordinates, false)
-            binding.tvGDVerti.text = "${vertiText.map { df.format(it) }}"
-                .replace("[", "")
-                .replace("]", "")
-                .replace(", ", " : ")
-            binding.tvGDHorizon.text = "${horizonText.map { df.format(it) }}"
-                .replace("[", "")
-                .replace("]", "")
-                .replace(", ", " : ")
-        }
-
-
-
-
-
-        binding.cbGDVerti.setOnCheckedChangeListener { _, isChecked ->
-            setRatioLineInImage(true, isChecked)
-        }
-        binding.cbGDHorizon.setOnCheckedChangeListener { _, isChecked ->
-            setRatioLineInImage(false, isChecked)
-        }
-    }
-
-    private fun setRatioLineInImage(isVerti: Boolean, switchedOn: Boolean) {
-        when (switchedOn) {
-            true -> {
-                if (isVerti) gvm.currentCheckedRatioLines.add(DrawRatioLine.A_VERTI)
-                else gvm.currentCheckedRatioLines.add(DrawRatioLine.A_HORIZON)
-            }
-            false -> {
-                if (isVerti) gvm.currentCheckedRatioLines.remove(DrawRatioLine.A_VERTI)
-                else gvm.currentCheckedRatioLines.remove(DrawRatioLine.A_HORIZON)
-            }
-        }
-        Log.v("비율이미지", "${gvm.currentCheckedRatioLines}")
-        setImage()
-    }
-
-    override fun adapterMoreClicked(isExpanded: Boolean) {
-        Log.v("확장", "inFragment = $isExpanded")
-        if (!isExpanded) {
-            binding.llGDRatioTitle.visibility = View.VISIBLE
-            binding.tvGDRatioTitle.visibility = View.VISIBLE
-        } else {
-            binding.llGDRatioTitle.visibility = View.GONE
-            binding.tvGDRatioTitle.visibility = View.GONE
-        }
-    }
 }

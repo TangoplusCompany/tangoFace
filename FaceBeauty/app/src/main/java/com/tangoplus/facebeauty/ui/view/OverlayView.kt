@@ -1,6 +1,7 @@
 package com.tangoplus.facebeauty.ui.view
 
 import android.content.Context
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
@@ -59,15 +60,17 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 
         standardPaint = Paint().apply {
             color = "#8000FF00".toColorInt()
-            strokeWidth = 4f
+            strokeWidth = 3f
             isAntiAlias = true
             style = Paint.Style.STROKE
+            maskFilter = BlurMaskFilter(10f, BlurMaskFilter.Blur.SOLID)
         }
         notStandardPaint = Paint().apply {
             color = "#80FF2819".toColorInt()
-            strokeWidth = 4f
+            strokeWidth = 3f
             isAntiAlias = true
             style = Paint.Style.STROKE
+            maskFilter = BlurMaskFilter(10f, BlurMaskFilter.Blur.SOLID)
         }
         outLinePaint = Paint().apply {
             color = "#FFFFFF".toColorInt()

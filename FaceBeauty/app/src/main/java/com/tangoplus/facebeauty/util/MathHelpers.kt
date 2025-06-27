@@ -52,8 +52,10 @@ object MathHelpers {
         }
         return abs(sum) / 2.0
     }
-
-
+    // ------# 보정 값 계산 #-------
+    fun correctingValue (OGValue : Float, correctionValue: Float) : Float {
+        return (OGValue + correctionValue + 360f ) % 360f
+    }
 
     // ------! 선과 점의 X 각도 !------
     fun calculateAngleBySlope(x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float): Float {

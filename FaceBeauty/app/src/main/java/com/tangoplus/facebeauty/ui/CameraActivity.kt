@@ -51,6 +51,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
+import com.airbnb.lottie.LottieDrawable
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.tangoplus.facebeauty.R
@@ -88,6 +89,7 @@ import com.tangoplus.facebeauty.util.FileUtility.getImageUriFromFileName
 import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
 import com.tangoplus.facebeauty.util.FileUtility.toJSONObject
 import com.tangoplus.facebeauty.util.MathHelpers.calculateAngle
+import com.tangoplus.facebeauty.util.MathHelpers.correctingValue
 import com.tangoplus.facebeauty.util.PreferenceUtility
 import com.tangoplus.facebeauty.vm.GalleryViewModel
 import kotlin.math.abs
@@ -199,6 +201,49 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
             // Close the FaceLandmarkerHelper and release resources
             backgroundExecutor.execute { faceLandmarkerHelper.clearFaceLandmarker() }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if(this::faceLandmarkerHelper.isInitialized) {
+            viewModel.setMaxFaces(faceLandmarkerHelper.maxNumFaces)
+            viewModel.setMinFaceDetectionConfidence(faceLandmarkerHelper.minFaceDetectionConfidence)
+            viewModel.setMinFaceTrackingConfidence(faceLandmarkerHelper.minFaceTrackingConfidence)
+            viewModel.setMinFacePresenceConfidence(faceLandmarkerHelper.minFacePresenceConfidence)
+            viewModel.setDelegate(faceLandmarkerHelper.currentDelegate)
+
+            faceLandmarkerHelper.clearFaceLandmarker() // 메모리 해제
+        }
+        cameraProvider?.unbindAll()
+
+        // 2. 얼굴 랜드마커 및 executor 종료
+        backgroundExecutor.shutdownNow()
+
+    }
+    override fun onStart() {
+        super.onStart()
+
+        // 1. 백그라운드 executor 다시 생성
+        backgroundExecutor = Executors.newSingleThreadExecutor()
+
+        // 2. 얼굴 랜드마커 다시 생성
+        backgroundExecutor.execute {
+            faceLandmarkerHelper = FaceLandmarkerHelper(
+                context = this@CameraActivity,
+                runningMode = RunningMode.LIVE_STREAM,
+                minFaceDetectionConfidence = viewModel.currentMinFaceDetectionConfidence,
+                minFaceTrackingConfidence = viewModel.currentMinFaceTrackingConfidence,
+                minFacePresenceConfidence = viewModel.currentMinFacePresenceConfidence,
+                maxNumFaces = viewModel.currentMaxFaces,
+                currentDelegate = viewModel.currentDelegate,
+                faceLandmarkerHelperListener = this
+            )
+        }
+
+        // 3. 카메라 다시 설정
+        binding.viewFinder.post {
+            setUpCamera()
         }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -352,7 +397,16 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 show()
             }
         }
-        startBouncingAnimation(bounceAnimator, binding.tvSeqGuide)
+//        bounceAnimator = AnimatorSet()
+//        startBouncingAnimation(bounceAnimator, binding.tvSeqGuide)
+        binding.lavCamera.setFailureListener { throwable ->
+            Log.e("Lottie", "Animation loading failed", throwable)
+        }
+        binding.lavCamera.setAnimation("focusing_screen.json")
+        binding.lavCamera.repeatCount = LottieDrawable.INFINITE
+        binding.lavCamera.playAnimation()
+
+
 //        binding.clSeqGuide.setOnSingleClickListener {
 ////            binding.clSeqGuide.clearAnimation()
 ////            binding.clSeqGuide.animate().cancel()
@@ -498,7 +552,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 val vertiBoolean = if (eyeDistanceGap < 0.275f) true else false
 
 
-                val horizonBoolean = horizontalLineVector in 125f..149f
+                val horizonBoolean = horizontalLineVector in 120f..170f
                 binding.overlay.setHorizon(horizonBoolean)
 //                Log.v("얼굴 중앙", "$isFaceCenter")
 //                Log.v("라인벡터", "코: ${faceLandmarks[0].x()}, ${faceLandmarks[0].y()}, 왼쪽눈: ${faceLandmarks[33].x()}, ${faceLandmarks[33].x()}, 오른쪽 눈: ${faceLandmarks[263].x()}, ${faceLandmarks[263].x()}")
@@ -552,6 +606,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 ivm.isFinishInput &&
                 isFaceCenter &&
                 !viewModel.getSeqFinishedFlag() &&
+                !viewModel.getCountDownFlag() &&
                 binding.overlay.getVerti() &&
                 binding.overlay.getHorizon()
                 ) {
@@ -943,8 +998,10 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 0 -> {
                     // 468: 실제 오른쪽 눈  473: 실제 왼쪽 눈
                     val eyeAngle = calculateSlope(vmPlr[468].first , vmPlr[468].second, vmPlr[473].first, vmPlr[473].second)
+                    val correctionValue = 180f - eyeAngle
                     // 234: 오른쪽 귓바퀴 454: 왼쪽 귓바퀴
                     val earFlapsAngle = calculateSlope(vmPlr[234].first, vmPlr[234].second, vmPlr[454].first, vmPlr[454].second)
+                    val correctEarFlapsAngle = correctingValue(earFlapsAngle, correctionValue)
                     // 입술끝 왼: 291 오: 61
                     val tipOfLipsAngle = calculateSlope(vmPlr[61].first, vmPlr[61].second, vmPlr[291].first, vmPlr[291].second)
                     // 미간-코
