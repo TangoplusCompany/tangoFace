@@ -48,7 +48,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.airbnb.lottie.LottieDrawable
@@ -60,7 +59,6 @@ import com.tangoplus.facebeauty.data.db.FaceDao
 import com.tangoplus.facebeauty.data.db.FaceDatabase
 import com.tangoplus.facebeauty.databinding.ActivityCameraBinding
 import com.tangoplus.facebeauty.ui.AnimationUtility.animateTextViewToTopLeft
-import com.tangoplus.facebeauty.ui.AnimationUtility.startBouncingAnimation
 import com.tangoplus.facebeauty.util.FileUtility.getRequiredPermissions
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.util.MathHelpers.calculateScaleFromPart
@@ -89,6 +87,7 @@ import com.tangoplus.facebeauty.util.FileUtility.getImageUriFromFileName
 import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
 import com.tangoplus.facebeauty.util.FileUtility.toJSONObject
 import com.tangoplus.facebeauty.util.MathHelpers.calculateAngle
+import com.tangoplus.facebeauty.util.MathHelpers.calculatePolygonArea
 import com.tangoplus.facebeauty.util.MathHelpers.correctingValue
 import com.tangoplus.facebeauty.util.PreferenceUtility
 import com.tangoplus.facebeauty.vm.GalleryViewModel
@@ -132,7 +131,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     private val ivm : InputViewModel by viewModels()
     private val gvm : GalleryViewModel by viewModels()
     private var seqStep = MutableLiveData(0)
-    private val maxSeq = 1
+    private val maxSeq = 3
 
     private var scaleFactorX : Float? = null
     private var scaleFactorY : Float? = null
@@ -296,60 +295,38 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 // ---------------# 데이터 갈무리해서 gallery DialogFragment로 넘기기 #-----------------
                 // 각각의 static에 사용자 정보 넣기
 
+                val staticJSON0 = setJo(mvm.staticJA.getJSONObject(0),0)
+                val staticJSON1 = setJo(mvm.staticJA.getJSONObject(1),1)
+                val staticJSON2 = setJo(mvm.staticJA.getJSONObject(2),2)
+                val staticJSON3 = setJo(mvm.staticJA.getJSONObject(3),3)
+                val staticJos = listOf(staticJSON0, staticJSON1, staticJSON2, staticJSON3)
+                val transStatics = staticJos.map { it.toFaceStatic() } // static으로 변하기 -> json으로 저장 전 파일 이름과 landmark 담아야함
 
-                mvm.staticJson0.apply {
-                    put("temp_server_sn", prefsUtil.getLastTempServerSn())
-                    put("mediaFileName", mvm.static0FileName.toString())
-                    put("jsonFileName", mvm.static0FileName.toString().replace(".jpg", ".json"))
-                    put("seq", 0)
-                    put("user_uuid", mvm.currentUUID)
-                    put("user_name", ivm.nameValue.value.toString())
-                    put("user_mobile", ivm.mobileValue.value.toString())
+                val mergedJOBeforeFileName = mutableListOf<JSONObject>()
+                for (i in 0 until 4) {
+                    val mergedJSON = JSONObject().apply {
+                        put("data", JSONObject(transStatics[i].toJSONObject()))
+                        put("face_landmark", mvm.coordinatesJA.getJSONArray(i))
+                    }
+                    mergedJOBeforeFileName.add(mergedJSON)
+                    val jsonPath = saveJsonToStorage(mergedJSON, mvm.staticFileNames[i].replace(".jpg", ""))
+                    mergedJOBeforeFileName[i].put("jsonFileName", jsonPath)
+                    mvm.mergedJA.put(mergedJOBeforeFileName[i])
                 }
-                mvm.staticJson1.apply {
-                    put("temp_server_sn", prefsUtil.getLastTempServerSn())
-                    put("mediaFileName", mvm.static1FileName.toString())
-                    put("jsonFileName", mvm.static1FileName.toString().replace(".jpg", ".json"))
-                    put("seq", 1)
-                    put("user_uuid", mvm.currentUUID)
-                    put("user_name", ivm.nameValue.value.toString())
-                    put("user_mobile", ivm.mobileValue.value.toString())
-                }
-                val transJOStatic0 = mvm.staticJson0.toFaceStatic()
-                val transJOStatic1 = mvm.staticJson1.toFaceStatic()
-                mvm.mergedJson0.apply {
-                    put("data", JSONObject(transJOStatic0.toJSONObject()))
-                    put("face_landmark", mvm.coordinates0)
-                }
-                mvm.mergedJson1.apply {
-                    put("data", JSONObject(transJOStatic1.toJSONObject()))
-                    put("face_landmark", mvm.coordinates1)
-                }
-//                Log.v("mvm.mergedJson", "${mvm.mergedJson0}, ${mvm.mergedJson1}")
 
-                val jsonPath0 = saveJsonToStorage(mvm.mergedJson0, mvm.static0FileName.toString().replace(".jpg", ""))
-                val jsonPath1 = saveJsonToStorage(mvm.mergedJson1, mvm.static1FileName.toString().replace(".jpg", ""))
-                Log.v("mvm.mergedJson", "${jsonPath0}, ${jsonPath1}")
-//                mvm.staticJson0.put("jsonFileUri", jsonPath0.toString())
-//                mvm.staticJson1.put("jsonFileUri", jsonPath1.toString())
-//                mvm.mergedJson0.put("data", mvm.staticJson0)
-//                mvm.mergedJson1.put("data", mvm.staticJson1)
-
-                val results = JSONArray().apply {
-                    put(mvm.mergedJson0)
-                    put(mvm.mergedJson1)
-                }
-                Log.v("mvm.mergedJson", "$results")
+                Log.v("mvm.mergedJson", "${mvm.mergedJA}")
                 // faceResult 객체 1개의 날짜 정함
                 val finishedResult = FaceResult(
                     tempServerSn = prefsUtil.getNextTempServerSn(),
                     userName = ivm.nameValue.value,
                     userMobile = ivm.mobileValue.value,
                     imageUris = listOf(
-                        getImageUriFromFileName(this@CameraActivity, mvm.static0FileName ?: ""),
-                        getImageUriFromFileName(this@CameraActivity, mvm.static1FileName ?: "")
+                        getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[0]),
+                        getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[1]),
+                        getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[2]),
+                        getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[3]),
                     ),
-                    results = results
+                    results = mvm.mergedJA
                 )
                 Log.v("mvm.mergedJson", "${finishedResult.results.getJSONObject(0).getJSONObject("data")}")
                 gvm.currentResult.value = finishedResult
@@ -357,14 +334,19 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     val fd = FaceDatabase.getDatabase(this@CameraActivity)
                     fDao = fd.faceDao()
                     // static 2개를 만들어서 DB 저장
-
-                    val static0 = mvm.staticJson0.toFaceStatic()
+                    val static0 = mvm.mergedJA.getJSONObject(0).getJSONObject("data").toFaceStatic()
                     Log.v("static0", "변환완료: $static0")
-                    fDao.insertStatic(static0)
-                    val static1 = mvm.staticJson1.toFaceStatic()
-                    Log.v("static1", "변환완료: $static1")
-                    fDao.insertStatic(static1)
 
+                    val static1 = mvm.mergedJA.getJSONObject(1).getJSONObject("data").toFaceStatic()
+                    Log.v("static1", "변환완료: $static1")
+                    val static2 = mvm.mergedJA.getJSONObject(2).getJSONObject("data").toFaceStatic()
+                    val static3  = mvm.mergedJA.getJSONObject(3).getJSONObject("data").toFaceStatic()
+                    Log.v("static2", "변환완료: $static2")
+                    Log.v("static3", "변환완료: $static3")
+                    fDao.insertStatic(static0)
+                    fDao.insertStatic(static1)
+                    fDao.insertStatic(static2)
+                    fDao.insertStatic(static3)
                     finishedResult.regDate = static0.reg_date
 
                     withContext(Dispatchers.Main) {
@@ -399,9 +381,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         }
 //        bounceAnimator = AnimatorSet()
 //        startBouncingAnimation(bounceAnimator, binding.tvSeqGuide)
-        binding.lavCamera.setFailureListener { throwable ->
-            Log.e("Lottie", "Animation loading failed", throwable)
-        }
         binding.lavCamera.setAnimation("focusing_screen.json")
         binding.lavCamera.repeatCount = LottieDrawable.INFINITE
         binding.lavCamera.playAnimation()
@@ -550,9 +529,11 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
                 val horizontalLineVector = calculateAngle(leftEarPoint.x(), leftEarPoint.y(), noseTip.x(), noseTip.y(),rightEarPoint.x(), rightEarPoint.y())
                 val vertiBoolean = if (eyeDistanceGap < 0.275f) true else false
-
-
-                val horizonBoolean = horizontalLineVector in 120f..170f
+                val horizonBoolean = if (seqStep.value == 2) {
+                    horizontalLineVector in 30f..80f
+                } else {
+                    horizontalLineVector in 120f..170f
+                }
                 binding.overlay.setHorizon(horizonBoolean)
 //                Log.v("얼굴 중앙", "$isFaceCenter")
 //                Log.v("라인벡터", "코: ${faceLandmarks[0].x()}, ${faceLandmarks[0].y()}, 왼쪽눈: ${faceLandmarks[33].x()}, ${faceLandmarks[33].x()}, 오른쪽 눈: ${faceLandmarks[263].x()}, ${faceLandmarks[263].x()}")
@@ -582,6 +563,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             if (ivm.isFinishInput && isFaceCenter && resultBundle.result.faceLandmarks().isNotEmpty() && !viewModel.getSeqFinishedFlag()) {
                 // 애니메이션 제거 flag
                 if (!viewModel.getGuideTextFlag()) {
+                    binding.lavCamera.clearAnimation()
+                    binding.lavCamera.visibility = View.INVISIBLE
                     bounceAnimator?.cancel()
                     bounceAnimator = null
                     binding.tvSeqGuide.animate().cancel()
@@ -701,7 +684,9 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             text = when (seq) {
                 0 -> "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요\n게이지가 차면 자동으로 촬영을 시작합니다 !"
                 1 -> "다음 단계는 교합 상태입니다\n이를 맞물리게 물고 입술을 벌려보세요"
-                2 -> "수고하셨습니다\n버튼을 눌러 결과를 확인해보세요"
+                2 -> "세번째 단계는 천장을 본 상태입니다.\n정면에서 턱을 들어 유지해주세요"
+                3 -> "마지막 단계는 양 볼을 부풀린 상태입니다.\n숨을 들이마시고 볼을 최대한 팽창한 상태로 유지해주세요"
+                4 -> "수고하셨습니다\n버튼을 눌러 결과를 확인해보세요"
                 else -> ""
             }
             visibility = View.VISIBLE
@@ -727,9 +712,10 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     }
 
     private fun updateUI() {
+        seqStep.value = seqStep.value?.plus(1)
         when (seqStep.value) {
             maxSeq -> {
-                setGuideAnimation(2)
+                setGuideAnimation(maxSeq)
                 binding.clCountDown.visibility = View.GONE
                 binding.btnShooting.apply {
                     visibility = View.VISIBLE
@@ -741,9 +727,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
             }
             else -> {
-                seqStep.value = seqStep.value?.plus(1)
-                setGuideAnimation(1)
-                binding.tvSeqCount.text = "${seqStep.value?.plus(1)} / 2"
+                seqStep.value?.let { setGuideAnimation(it) }
+                binding.tvSeqCount.text = "${seqStep.value?.plus(1)} / 4"
                 viewModel.setCountDownFlag(false)
                 binding.fdgv.resetSuccessMode()
             }
@@ -913,11 +898,9 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             } ?: run {
                 Log.e("SaveMedia", "Failed to create image URI")
             }
-            when (seqStep.value) {
-                0 -> mvm.static0FileName = "$fileName$extension"
-                1 -> mvm.static1FileName = "$fileName$extension"
-            }
-            Log.d("SaveMedia", "seqStep: ${seqStep.value} vm0FileName: ${mvm.static0FileName} vm1FileName: ${mvm.static1FileName}")
+            mvm.staticFileNames.add("$fileName$extension")
+
+            Log.d("SaveMedia", "seqStep: ${seqStep.value} vmFileName: ${mvm.staticFileNames}")
 
             // 임시 파일과 비트맵 정리
             tempFile.delete()
@@ -940,6 +923,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         return when (step) {
             0 -> "1-1-$timestamp"
             1 -> "2-2-$timestamp"
+            2 -> "3-3-$timestamp"
+            3 -> "4-4-$timestamp"
             else -> ""
         }
     }
@@ -973,7 +958,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             // 비우기
             mvm.currentCoordinate.clear()
             mvm.relativeCoordinate.clear()
-
+            mvm.tempCoordinateJA = JSONArray()
             plr?.forEachIndexed { index, faceLandmark ->
                 val scaledX = calculateScreenX(faceLandmark.x())
                 val scaledY = calculateScreenY(faceLandmark.y())
@@ -983,15 +968,20 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     put("isActive", true)
                     put("sx", scaledX)
                     put("sy", scaledY)
+                    put("wx", faceLandmark.x())
+                    put("wy", faceLandmark.y())
+                    put("wz", faceLandmark.z())
                 }
-                when (step) {
-                    0 -> mvm.coordinates0.put(jo)
-                    1 -> mvm.coordinates1.put(jo)
-                }
+                mvm.tempCoordinateJA.put(jo)
+//                when (step) {
+//                    0 -> mvm.coordinates0.put(jo)
+//                    1 -> mvm.coordinates1.put(jo)
+//                }
                 mvm.currentCoordinate.add(Pair(scaledX, scaledY))
                 mvm.relativeCoordinate.add(Pair(faceLandmark.x(), faceLandmark.y()))
             }
-
+            // seq 1개의 좌표를 담고 tempCoordinates는 초기화
+            mvm.coordinatesJA.put(mvm.tempCoordinateJA)
             val vmPlr = mvm.currentCoordinate
             val vmRePlr = mvm.relativeCoordinate
             when (step) {
@@ -1004,10 +994,13 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     val correctEarFlapsAngle = correctingValue(earFlapsAngle, correctionValue)
                     // 입술끝 왼: 291 오: 61
                     val tipOfLipsAngle = calculateSlope(vmPlr[61].first, vmPlr[61].second, vmPlr[291].first, vmPlr[291].second)
+                    val correctTipOfLipsAngle = correctingValue(tipOfLipsAngle, correctionValue)
                     // 미간-코
                     val glabellaNoseAngle = calculateSlope(vmPlr[1].first, vmPlr[1].second, vmPlr[8].first, vmPlr[8].second)
+
                     // 코-턱
                     val noseChinAngle = calculateSlope(vmPlr[152].first, vmPlr[152].second, vmPlr[1].first, vmPlr[1].second)
+
                     // 콧날개 오 64 왼 294
                     val earFlapNasalWingAngles =  Pair(
                         calculateSlope(vmPlr[234].first, vmPlr[234].second, vmPlr[64].first, vmPlr[64].second),
@@ -1024,10 +1017,10 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         getRealDistanceX(Pair(vmRePlr[61].first, vmRePlr[61].second), Pair(vmRePlr[0].first, vmRePlr[0].second))
                         )
                     // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
-                    mvm.staticJson0.apply {
+                    val tempStatic = JSONObject().apply {
                         put("resting_eye_horizontal_angle", eyeAngle)
-                        put("resting_earflaps_horizontal_angle", earFlapsAngle)
-                        put("resting_tip_of_lips_horizontal_angle", tipOfLipsAngle)
+                        put("resting_earflaps_horizontal_angle", correctEarFlapsAngle)
+                        put("resting_tip_of_lips_horizontal_angle", correctTipOfLipsAngle)
                         put("resting_glabella_nose_vertical_angle", glabellaNoseAngle)
                         put("resting_nose_chin_vertical_angle", noseChinAngle)
                         put("resting_left_earflaps_nasal_wing_horizontal_angle", earFlapNasalWingAngles.first)
@@ -1037,16 +1030,20 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         put("resting_left_tip_of_lips_center_lips_distance", tipOfLipsCenterLipsDistance.first)
                         put("resting_right_tip_of_lips_center_lips_distance", tipOfLipsCenterLipsDistance.second)
                     }
+                    mvm.staticJA.put(tempStatic)
                     Log.v("정면 각도들", "eyeAngle: $eyeAngle earFlapsAngle: $earFlapsAngle tipOfLipsAngle: $tipOfLipsAngle glabellaNoseAngle: $glabellaNoseAngle noseChinAngle: $noseChinAngle earFlapNasalWingAngle:$earFlapNasalWingAngles earFlapNoseDistance: $earFlapNoseDistance tipOfLipsCenterLipsDistance: $tipOfLipsCenterLipsDistance")
-                    Log.v("제이슨", "${mvm.staticJson0}")
+//                    Log.v("제이슨", "${}")
                 }
                 1 -> {
-// 468: 실제 오른쪽 눈  473: 실제 왼쪽 눈
+                    // 468: 실제 오른쪽 눈  473: 실제 왼쪽 눈
                     val eyeAngle = calculateSlope(vmPlr[468].first , vmPlr[468].second, vmPlr[473].first, vmPlr[473].second)
+                    val correctionValue = 180f - eyeAngle
                     // 234: 오른쪽 귓바퀴 454: 왼쪽 귓바퀴
                     val earFlapsAngle = calculateSlope(vmPlr[234].first, vmPlr[234].second, vmPlr[454].first, vmPlr[454].second)
+                    val correctEarFlapsAngle = correctingValue(earFlapsAngle, correctionValue)
                     // 입술끝 왼: 291 오: 61
                     val tipOfLipsAngle = calculateSlope(vmPlr[61].first, vmPlr[61].second, vmPlr[291].first, vmPlr[291].second)
+                    val correctTipOfLipsAngle = correctingValue(tipOfLipsAngle, correctionValue)
                     // 미간-코
                     val glabellaNoseAngle = calculateSlope(vmPlr[1].first, vmPlr[1].second, vmPlr[8].first, vmPlr[8].second)
                     // 코-턱
@@ -1056,6 +1053,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         calculateSlope(vmPlr[234].first, vmPlr[234].second, vmPlr[64].first, vmPlr[64].second),
                         calculateSlope(vmPlr[294].first, vmPlr[294].second, vmPlr[454].first, vmPlr[454].second)
                     )
+
                     // 귓바퀴-코 거리
                     val earFlapNoseDistance =  Pair(
                         getRealDistanceX(Pair(vmRePlr[1].first, vmRePlr[1].second), Pair(vmRePlr[234].first, vmRePlr[234].second)),
@@ -1067,10 +1065,10 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         getRealDistanceX( Pair(vmRePlr[64].first, vmRePlr[64].second), Pair(vmRePlr[0].first, vmRePlr[0].second))
                     )
 
-                    mvm.staticJson1.apply {
+                    val tempStatic = JSONObject().apply {
                         put("occlusal_eye_horizontal_angle", eyeAngle)
-                        put("occlusal_earflaps_horizontal_angle", earFlapsAngle)
-                        put("occlusal_tip_of_lips_horizontal_angle", tipOfLipsAngle)
+                        put("occlusal_earflaps_horizontal_angle", correctEarFlapsAngle)
+                        put("occlusal_tip_of_lips_horizontal_angle", correctTipOfLipsAngle)
                         put("occlusal_glabella_nose_vertical_angle", glabellaNoseAngle)
                         put("occlusal_nose_chin_vertical_angle", noseChinAngle)
                         put("occlusal_left_earflaps_nasal_wing_horizontal_angle", earFlapNasalWingAngles.first)
@@ -1080,8 +1078,35 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         put("occlusal_left_tip_of_lips_center_lips_distance", tipOfLipsCenterLipsDistance.first)
                         put("occlusal_right_tip_of_lips_center_lips_distance", tipOfLipsCenterLipsDistance.second)
                     }
+                    mvm.staticJA.put(tempStatic)
                     Log.v("악물었을 때", "eyeAngle: $eyeAngle earFlapsAngle: $earFlapsAngle tipOfLipsAngle: $tipOfLipsAngle glabellaNoseAngle: $glabellaNoseAngle noseChinAngle: $noseChinAngle earFlapNasalWingAngle:$earFlapNasalWingAngles earFlapNoseDistance: $earFlapNoseDistance tipOfLipsCenterLipsDistance: $tipOfLipsCenterLipsDistance")
-                    Log.v("제이슨", "${mvm.staticJson1}")
+                    Log.v("제이슨", "$tempStatic")
+                }
+                2 -> {
+                    val glabellaChinVerticalAngle = calculateSlope(vmPlr[152].first, vmPlr[152].second, vmPlr[8].first, vmPlr[8].second)
+                    val tempStatic = JSONObject().apply {
+                        put("neck_gaze_glabella_chin_vertical_angle", glabellaChinVerticalAngle)
+                    }
+                    mvm.staticJA.put(tempStatic)
+                    Log.v("고개 치켜들었을 때 ", "neck_gaze_glabella_chin_vertical_angle: $glabellaChinVerticalAngle")
+                    Log.v("제이슨", "$tempStatic")
+                }
+                3 -> {
+                    val leftCheeks = listOf(49, 142, 101, 50, 123, 147, 213, 138, 135, 169, 170, 140, 208, 201 ,83, 182, 106, 43, 61, 165)
+                    val rightCheeks = listOf(279, 371, 330, 280, 352, 378, 433, 367, 364, 394, 395, 369, 396, 428, 421, 313, 406, 335, 273, 291, 391)
+                    val leftCheeksPoint = leftCheeks.map { vmPlr[it] }
+                    val rightCheeksPoint = rightCheeks.map { vmPlr[it] }
+                    val puffedCheeksCheeksExtents = Pair(
+                        calculatePolygonArea(leftCheeksPoint),
+                        calculatePolygonArea(rightCheeksPoint)
+                    )
+                    val tempStatic = JSONObject().apply {
+                        put("puffed_cheeks_left_cheeks_extent", puffedCheeksCheeksExtents.first)
+                        put("puffed_cheeks_right_cheeks_extent", puffedCheeksCheeksExtents.second)
+                    }
+                    mvm.staticJA.put(tempStatic)
+                    Log.v("고개 치켜들었을 때 ", "neck_gaze_glabella_chin_vertical_angle: $puffedCheeksCheeksExtents")
+                    Log.v("제이슨", "$tempStatic")
                 }
             }
             mvm.currentFaceLandmarks = JSONArray()
@@ -1094,15 +1119,15 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             isEnabled = true
             visibility = View.INVISIBLE
         }
-        binding.tvSeqCount.text = "1 / 2"
-        mvm.static0FileName = null
-        mvm.static1FileName = null
-        mvm.mergedJson0 = JSONObject()
-        mvm.mergedJson1 = JSONObject()
-        mvm.staticJson0 = JSONObject()
-        mvm.staticJson1 = JSONObject()
-        mvm.coordinates0 = JSONArray()
-        mvm.coordinates1 = JSONArray()
+        binding.tvSeqCount.text = "1 / 4"
+        mvm.staticFileNames.clear()
+//        mvm.static1FileName = null
+//        mvm.mergedJson0 = JSONObject()
+//        mvm.mergedJson1 = JSONObject()
+//        mvm.staticJson0 = JSONObject()
+//        mvm.staticJson1 = JSONObject()
+//        mvm.coordinates0 = JSONArray()
+//        mvm.coordinates1 = JSONArray()
         mvm.currentCoordinate = mutableListOf()
         mvm.currentFaceLandmarks = JSONArray()
         ivm.nameValue.value = ""
@@ -1135,5 +1160,15 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
         return y
     }
-
+    private fun setJo(originJo : JSONObject, seq: Int) : JSONObject {
+        return originJo.apply {
+            put("temp_server_sn", prefsUtil.getLastTempServerSn())
+            put("mediaFileName", mvm.staticFileNames[seq])
+            put("jsonFileName", mvm.staticFileNames[seq].replace(".jpg", ".json"))
+            put("seq", seq)
+            put("user_uuid", mvm.currentUUID)
+            put("user_name", ivm.nameValue.value.toString())
+            put("user_mobile", ivm.mobileValue.value.toString())
+        }
+    }
 }

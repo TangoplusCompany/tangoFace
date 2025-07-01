@@ -24,4 +24,6 @@
     <color name="subColor700">#757575</color>
     <color name="subColor800">#47484C</color>
     <color name="rippleColor">#80F6F6F6</color>
+
+    <color name="transparent">#00FFFFFF</color>
 </resources>

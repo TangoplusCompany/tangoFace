@@ -16,16 +16,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // c secretkey 저장
-        externalNativeBuild {
-            cmake {
-                cppFlags += ""
-            }
-        }
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
-        }
     }
 
     buildTypes {
@@ -47,12 +37,6 @@ android {
     viewBinding {
         enable = true
     }
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-        }
-    }
-
 }
 //noinspection UseTomlInstead
 dependencies {

@@ -1,14 +1,18 @@
 package com.tangoplus.facebeauty.ui
 
+import android.animation.Animator
+import android.animation.ValueAnimator
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.icu.text.DecimalFormat
 import android.os.Bundle
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.view.WindowManager
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
@@ -29,8 +33,8 @@ import com.tangoplus.facebeauty.databinding.FragmentInformationDialogBinding
 import com.tangoplus.facebeauty.ui.view.GridSpacingItemDecoration
 import com.tangoplus.facebeauty.ui.view.OnAdapterMoreClickListener
 import com.tangoplus.facebeauty.ui.view.OnFaceStaticCheckListener
-import com.tangoplus.facebeauty.util.FileUtility.extractImageCoordinates
-import com.tangoplus.facebeauty.util.FileUtility.setImage
+import com.tangoplus.facebeauty.util.BitmapUtility.extractImageCoordinates
+import com.tangoplus.facebeauty.util.BitmapUtility.setImage
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
 import com.tangoplus.facebeauty.util.MathHelpers.calculateRatios
@@ -68,6 +72,71 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
         }
         showDetailResult()
 
+        // ------# 하단 버튼토글 그룹 시작 #------
+        binding.btnToggleGroup.check(R.id.btn1)
+        binding.btnToggleGroup.addOnButtonCheckedListener{ _, checkedId, isChecked ->
+            if (isChecked) {
+                when (checkedId) {
+                    R.id.btn1 -> {
+                        animateIndicator(true)
+                        gvm.setBtnIndex(0)
+                    }
+                    R.id.btn2 -> {
+                        animateIndicator(false)
+                        gvm.setBtnIndex(1)
+                    }
+                }
+            }
+            setImage()
+        }
+        binding.btn1.setOnSingleClickListener { binding.btnToggleGroup.check(R.id.btn1) }
+        binding.btn2.setOnSingleClickListener { binding.btnToggleGroup.check(R.id.btn2) }
+        binding.btnToggleGroup.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener{
+            override fun onGlobalLayout() {
+                initToggleIndicator()
+                binding.btnToggleGroup.viewTreeObserver.removeOnGlobalLayoutListener(this)
+            }
+        })
+        // ------# 하단 버튼토글 그룹 끝 #------
+    }
+    private fun initToggleIndicator() {
+        val buttonWidth = binding.btnToggleGroup.width / 2
+        val params = binding.toggleIndicator.layoutParams
+        params.width = buttonWidth - 36
+        params.height = binding.btnToggleGroup.height - 36
+        binding.toggleIndicator.layoutParams = params
+
+        binding.toggleIndicator.x = 24f
+    }
+
+    private fun animateIndicator(toLeft: Boolean) {
+        val animator = ValueAnimator.ofFloat(
+            binding.toggleIndicator.x,
+            if (toLeft) 24f else (binding.btnToggleGroup.width - binding.toggleIndicator.width - 24f)
+        )
+
+        animator.addUpdateListener { animation ->
+            binding.toggleIndicator.x = animation.animatedValue as Float
+        }
+
+        animator.duration = 250
+        animator.start()
+
+        animator.addListener(object: Animator.AnimatorListener{
+            override fun onAnimationStart(animation: Animator) {}
+            override fun onAnimationEnd(animation: Animator) {
+                when (toLeft) {
+                    true -> setToggleText(R.color.subColor800, R.color.subColor300)
+                    false -> setToggleText(R.color.subColor300, R.color.subColor800)
+                }
+            }
+            override fun onAnimationCancel(animation: Animator) {}
+            override fun onAnimationRepeat(animation: Animator) {}
+        })
+    }
+    private fun setToggleText(color1: Int, color2: Int) {
+        binding.tvbtn1.setTextColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(), color1)))
+        binding.tvbtn2.setTextColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(), color2)))
     }
     override fun onFaceStaticCheck(drawLineIndex: Int, isChecked: Boolean) {
         val selectedLine = when (drawLineIndex) {
@@ -272,10 +341,13 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
         )
     }
     private fun setImage() {
+        val leftSeq = if (gvm.getBtnIndex() == 0 ) 0 else 2
+        val rightSeq = if (gvm.getBtnIndex() == 0) 1 else 3
+
         lifecycleScope.launch {
             Log.v("체크", "setImage: ${gvm.currentCheckedRatioLines}")
-            gvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, 0, binding.ssiv1, gvm) }
-            gvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, 1, binding.ssiv2, gvm) }
+            gvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, leftSeq, binding.ssiv1, gvm) }
+            gvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, rightSeq, binding.ssiv2, gvm) }
         }
     }
     private fun setLinesInImage(switchedOn: Boolean) {
@@ -298,13 +370,15 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
     }
 
     private fun showZoomInDialogFragment() {
+        val leftSeq = if (gvm.getBtnIndex() == 0 ) 0 else 2
+        val rightSeq = if (gvm.getBtnIndex() == 0) 1 else 3
         binding.ssiv1.setOnLongClickListener {
-            val zoomInDialog = ZoomInDialogFragment.newInstance(0)
+            val zoomInDialog = ZoomInDialogFragment.newInstance(leftSeq)
             zoomInDialog.show(requireActivity().supportFragmentManager, "")
             true
         }
         binding.ssiv2.setOnLongClickListener {
-            val zoomInDialog = ZoomInDialogFragment.newInstance(1)
+            val zoomInDialog = ZoomInDialogFragment.newInstance(rightSeq)
             zoomInDialog.show(requireActivity().supportFragmentManager, "")
             true
         }

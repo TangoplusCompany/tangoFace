@@ -8,7 +8,9 @@ import java.lang.Math.toDegrees
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.pow
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 object MathHelpers {
@@ -39,10 +41,10 @@ object MathHelpers {
         val angleRadians = acos(cosTheta)
         return toDegrees(angleRadians.toDouble()).toFloat()
     }
-    fun calculatePolygonArea(points: List<Pair<Double, Double>>): Double {
-        if (points.size < 3) return 0.0  // 다각형이 안 됨
+    fun calculatePolygonArea(points: List<Pair<Float, Float>>): Float {
+        if (points.size < 3) return 0.0f  // 다각형이 안 됨
 
-        var sum = 0.0
+        var sum = 0.0f
         val n = points.size
 
         for (i in 0 until n) {
@@ -50,7 +52,7 @@ object MathHelpers {
             val (x2, y2) = points[(i + 1) % n]  // 마지막 점은 첫 번째와 연결
             sum += (x1 * y2) - (x2 * y1)
         }
-        return abs(sum) / 2.0
+        return abs(sum) / 2.0f
     }
     // ------# 보정 값 계산 #-------
     fun correctingValue (OGValue : Float, correctionValue: Float) : Float {
@@ -140,6 +142,4 @@ object MathHelpers {
     fun Context.dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
     }
-
-
 }

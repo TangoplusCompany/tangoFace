@@ -27,11 +27,6 @@
         android:theme="@style/Theme.FaceBeauty"
         tools:targetApi="31">
         <activity
-            android:name=".ui.WorkActivity"
-            android:exported="false"
-            android:screenOrientation="landscape"
-            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
-        <activity
             android:name=".ui.CameraActivity"
             android:exported="true"
             android:screenOrientation="landscape"

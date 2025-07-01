@@ -16,4 +16,14 @@ class GalleryViewModel : ViewModel() {
     val currentCheckedRatioLines = mutableSetOf<DrawRatioLine>()
 
     var currentFaceComparision = mutableListOf<FaceComparisonItem>()
+
+    private var clickedBtnIndex = 0
+
+
+    fun setBtnIndex(indexx: Int) {
+        clickedBtnIndex = indexx
+    }
+    fun getBtnIndex() : Int {
+        return clickedBtnIndex
+    }
 }

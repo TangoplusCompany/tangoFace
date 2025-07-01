@@ -1,11 +1,6 @@
 package com.tangoplus.facebeauty.ui
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Matrix
-import android.graphics.Paint
-import android.icu.text.DecimalFormat
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -34,29 +29,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import androidx.core.view.isVisible
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.skydoves.balloon.ArrowPositionRules
-import com.skydoves.balloon.Balloon
-import com.skydoves.balloon.BalloonAnimation
-import com.skydoves.balloon.BalloonSizeSpec
-import com.skydoves.balloon.showAlignTop
 import com.tangoplus.facebeauty.R
-import com.tangoplus.facebeauty.data.DrawLine
-import com.tangoplus.facebeauty.data.DrawRatioLine
-import com.tangoplus.facebeauty.data.FaceComparisonItem
-import com.tangoplus.facebeauty.data.FaceLandmarkResult.Companion.fromCoordinates
-import com.tangoplus.facebeauty.data.RVItemType
-import com.tangoplus.facebeauty.ui.view.OnAdapterMoreClickListener
-import com.tangoplus.facebeauty.ui.view.OnFaceStaticCheckListener
-import com.tangoplus.facebeauty.util.FileUtility.extractImageCoordinates
 import com.tangoplus.facebeauty.util.FileUtility.getImageUriFromFileName
 import com.tangoplus.facebeauty.util.FileUtility.getJsonUriFromFileName
 import com.tangoplus.facebeauty.util.FileUtility.scrollToView
-import com.tangoplus.facebeauty.util.FileUtility.setImage
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
-import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
-import com.tangoplus.facebeauty.util.MathHelpers.calculateRatios
 
 class GalleryDialogFragment : DialogFragment(), OnMeasureClickListener {
     private lateinit var binding : FragmentGalleryDialogBinding
@@ -88,19 +66,6 @@ class GalleryDialogFragment : DialogFragment(), OnMeasureClickListener {
         binding.clGDList.visibility = View.VISIBLE
         initShimmer()
         showListResult()
-
-//        gvm.isShowResult.observe(viewLifecycleOwner) { isFinish ->
-//            when (isFinish) {
-//                true -> {
-//                    setChangeUI()
-//                    showDetailResult()
-//                }
-//                false -> {
-//                    showListResult()
-//                }
-//            }
-//        }
-
         binding.ibtnGDBack.setOnSingleClickListener {
             MaterialAlertDialogBuilder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog).apply {
                 setTitle("알림")
@@ -112,18 +77,6 @@ class GalleryDialogFragment : DialogFragment(), OnMeasureClickListener {
                 setNegativeButton("아니오") { _, _ -> }
                 show()
             }
-
-//            val isListVisible = binding.clGDList.isVisible
-//            if (isListVisible) {
-//                // 결과보기 였을 경우
-//                if (gvm.isShowResult.value == true) {
-//
-//                } else {
-//                    dismiss()
-//                }
-//            } else {
-//                setChangeUI()
-//            }
         }
     }
 

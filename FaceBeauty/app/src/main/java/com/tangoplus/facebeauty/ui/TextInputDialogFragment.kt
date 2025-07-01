@@ -34,7 +34,6 @@ import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.databinding.FragmentTextInputDialogBinding
 import com.tangoplus.facebeauty.ui.view.TypingAnimationHelper
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
-import com.tangoplus.facebeauty.util.NativeLib
 import com.tangoplus.facebeauty.util.PreferenceUtility
 import com.tangoplus.facebeauty.util.SecurityUtility.generateCustomUUID
 import com.tangoplus.facebeauty.vm.InputViewModel
@@ -179,9 +178,7 @@ class TextInputDialogFragment : DialogFragment() {
 
         binding.btnTIDSave.setOnSingleClickListener {
             startDismissWithRipple()
-            val key = NativeLib.getSecretKey()
-            Log.d("SecretKey", "My Key: $key")
-
+            val key = getString(R.string.kekeke)
             val uuid = generateCustomUUID(ivm.nameValue.value, ivm.mobileValue.value, key)
             Log.v("createdUUID", uuid)
             mvm.currentUUID = uuid
@@ -271,6 +268,7 @@ class TextInputDialogFragment : DialogFragment() {
     }
 
     private fun showSkipDialog() {
+        val key = getString(R.string.kekeke)
         MaterialAlertDialogBuilder(requireContext(), R.style.ThemeOverlay_App_MaterialAlertDialog).apply {
             setTitle("알림")
             setMessage("개인정보 입력을 건너뛰시겠습니까?")
@@ -278,7 +276,7 @@ class TextInputDialogFragment : DialogFragment() {
 
                 ivm.nameValue.value = "GUEST"
                 ivm.mobileValue.value = (PreferenceUtility(requireContext()).getLastTempServerSn() + 1).toString() // 측정 결과 저장 전이니 일단 +1 한 temp_server_sn을 mobile로 uuid생성
-                val key = NativeLib.getSecretKey()
+
                 val uuid = generateCustomUUID(ivm.nameValue.value, ivm.mobileValue.value, key)
                 Log.v("createdUUID", uuid)
                 mvm.currentUUID = uuid
@@ -288,7 +286,7 @@ class TextInputDialogFragment : DialogFragment() {
             setNeutralButton("기록으로 이동") { _, _ ->
                 ivm.nameValue.value = "GUEST"
                 ivm.mobileValue.value = (PreferenceUtility(requireContext()).getLastTempServerSn() + 1).toString() // 측정 결과 저장 전이니 일단 +1 한 temp_server_sn을 mobile로 uuid생성
-                val key = NativeLib.getSecretKey()
+
                 val uuid = generateCustomUUID(ivm.nameValue.value, ivm.mobileValue.value, key)
                 Log.v("createdUUID", uuid)
                 mvm.currentUUID = uuid

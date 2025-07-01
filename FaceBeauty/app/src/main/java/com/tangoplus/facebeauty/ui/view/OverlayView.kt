@@ -12,6 +12,7 @@ import androidx.core.graphics.toColorInt
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+import com.tangoplus.facebeauty.vm.MeasureViewModel
 import kotlin.math.max
 import kotlin.math.min
 
@@ -39,7 +40,9 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     init {
         initPaints()
     }
-
+    // TODO seq2 일 때 verti, horizon에 대해서 다른 각도로 접근 해야함
+    // TODO 잘 촬영이 되게끔
+    // TODO 사진 어떻게 보여줄건지 4장 2장씩 seq 2 페이징
     fun getVerti() : Boolean {
         return verticalLineSuccess
     }

@@ -43,6 +43,11 @@ data class FaceStatic (
     val occlusal_left_tip_of_lips_center_lips_distance : Float = 0f,
     val occlusal_right_tip_of_lips_center_lips_distance : Float = 0f,
 
+    val neck_gaze_glabella_chin_vertical_angle : Float = 0f,
+
+    val puffed_cheeks_left_cheeks_extent : Float = 0f,
+    val puffed_cheeks_right_cheeks_extent : Float = 0f,
+
     ) {
     companion object {
         fun getCurrentDateTime(): String =

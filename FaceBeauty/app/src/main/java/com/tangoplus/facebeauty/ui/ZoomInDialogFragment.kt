@@ -1,7 +1,7 @@
 package com.tangoplus.facebeauty.ui
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
+
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,7 +10,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.databinding.FragmentZoomInDialogBinding
-import com.tangoplus.facebeauty.util.FileUtility.setImage
+import com.tangoplus.facebeauty.util.BitmapUtility.setImage
 import com.tangoplus.facebeauty.vm.GalleryViewModel
 import com.tangoplus.facebeauty.vm.MeasureViewModel
 import kotlinx.coroutines.launch

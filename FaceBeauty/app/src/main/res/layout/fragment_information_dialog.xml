@@ -34,6 +34,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="20dp"
                     android:src="@drawable/drawable_legend"
+                    android:visibility="invisible"
                     app:layout_constraintBottom_toBottomOf="@+id/textView2"
                     app:layout_constraintEnd_toStartOf="@+id/constraintLayout2"
                     app:layout_constraintTop_toTopOf="@+id/textView2" />
@@ -49,6 +50,92 @@
                     android:textSize="24dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
+
+                <FrameLayout
+                    android:id="@+id/FrameLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginEnd="20dp"
+                    android:background="@drawable/bckgnd_rectangle_12"
+                    app:layout_constraintBottom_toBottomOf="@+id/textView2"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="@+id/textView2"
+                    app:layout_constraintWidth_percent="0.25">
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/btnToggleGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bckgnd_rectangle_20"
+                        android:backgroundTint="@color/white"
+                        android:padding="6dp"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn1"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:backgroundTint="@color/transparent"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:textSize="18dp"
+                            android:visibility="visible"
+                            app:cornerRadius="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn2"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:textSize="18dp"
+                            app:backgroundTint="@color/transparent"
+                            app:cornerRadius="8dp" />
+
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <View
+                        android:id="@+id/toggleIndicator"
+                        android:layout_width="wrap_content"
+                        android:layout_height="64dp"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bckgnd_rectangle_12"
+                        android:backgroundTint="@color/subColor100" />
+
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/tvbtn1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="안정 &amp; 교합"
+                    android:textColor="@color/subColor800"
+                    android:textSize="18dp"
+                    app:layout_constraintBottom_toBottomOf="@id/FrameLayout"
+                    app:layout_constraintEnd_toEndOf="@id/FrameLayout"
+                    app:layout_constraintHorizontal_bias="0.175"
+                    app:layout_constraintStart_toStartOf="@id/FrameLayout"
+                    app:layout_constraintTop_toTopOf="@+id/FrameLayout" />
+
+                <TextView
+                    android:id="@+id/tvbtn2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="위쪽 &amp; 팽창"
+                    android:textColor="@color/subColor800"
+                    android:textSize="18dp"
+                    app:layout_constraintBottom_toBottomOf="@id/FrameLayout"
+                    app:layout_constraintEnd_toEndOf="@+id/FrameLayout"
+                    app:layout_constraintHorizontal_bias="0.825"
+                    app:layout_constraintStart_toStartOf="@id/FrameLayout"
+                    app:layout_constraintTop_toTopOf="@+id/FrameLayout" />
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:id="@+id/constraintLayout2"

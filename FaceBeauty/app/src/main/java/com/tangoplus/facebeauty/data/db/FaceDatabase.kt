@@ -4,12 +4,16 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import net.sqlcipher.database.SupportFactory
 
 @Database(entities = [FaceStatic::class], version = 1)
 abstract class FaceDatabase : RoomDatabase() {
     abstract fun faceDao() : FaceDao
 
     companion object {
+
         @Volatile
         private var INSTANCE: FaceDatabase? = null
         fun getDatabase(context: Context): FaceDatabase {
@@ -30,7 +34,5 @@ abstract class FaceDatabase : RoomDatabase() {
             INSTANCE?.close()
             INSTANCE = null
         }
-
     }
-
 }
