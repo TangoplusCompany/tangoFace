@@ -7,7 +7,7 @@ data class FaceLandmarkResult(val landmarks: List<FaceLandmark>) {
     )
 
     companion object {
-        fun fromCoordinates(coordinates: List<Pair<Float, Float>>?): FaceLandmarkResult {
+        fun fromFaceCoordinates(coordinates: List<Pair<Float, Float>>?): FaceLandmarkResult {
             val landmarks = coordinates?.map { (x, y) ->
                 FaceLandmark(x, y)
             }

@@ -1,7 +1,7 @@
 package com.tangoplus.facebeauty.vm
 
 import androidx.lifecycle.ViewModel
-import com.tangoplus.facebeauty.vision.FaceLandmarkerHelper
+import com.tangoplus.facebeauty.vision.face.FaceLandmarkerHelper
 
 class MainViewModel : ViewModel() {
 

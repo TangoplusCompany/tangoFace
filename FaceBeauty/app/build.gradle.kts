@@ -42,6 +42,7 @@ android {
 dependencies {
     implementation("com.davemorrissey.labs:subsampling-scale-image-view:3.10.0")
     implementation("com.github.skydoves:progressview:1.1.3")
+
     implementation ("androidx.core:core-ktx:1.8.0")
     implementation("com.google.mediapipe:tasks-vision:0.10.14")
     implementation("com.arthenica:ffmpeg-kit-full-gpl:6.0-2")

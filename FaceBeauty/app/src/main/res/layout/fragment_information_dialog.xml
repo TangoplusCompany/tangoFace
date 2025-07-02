@@ -62,7 +62,7 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="@+id/textView2"
-                    app:layout_constraintWidth_percent="0.25">
+                    app:layout_constraintWidth_percent="0.33">
 
                     <com.google.android.material.button.MaterialButtonToggleGroup
                         android:id="@+id/btnToggleGroup"
@@ -96,6 +96,17 @@
                             app:backgroundTint="@color/transparent"
                             app:cornerRadius="8dp" />
 
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn3"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:textSize="18dp"
+                            app:backgroundTint="@color/transparent"
+                            app:cornerRadius="8dp" />
+
                     </com.google.android.material.button.MaterialButtonToggleGroup>
 
                     <View
@@ -115,12 +126,12 @@
                     android:id="@+id/tvbtn1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="안정 &amp; 교합"
+                    android:text="정면, 교합"
                     android:textColor="@color/subColor800"
                     android:textSize="18dp"
                     app:layout_constraintBottom_toBottomOf="@id/FrameLayout"
                     app:layout_constraintEnd_toEndOf="@id/FrameLayout"
-                    app:layout_constraintHorizontal_bias="0.175"
+                    app:layout_constraintHorizontal_bias="0.1"
                     app:layout_constraintStart_toStartOf="@id/FrameLayout"
                     app:layout_constraintTop_toTopOf="@+id/FrameLayout" />
 
@@ -128,12 +139,24 @@
                     android:id="@+id/tvbtn2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="위쪽 &amp; 팽창"
+                    android:text="턱 좌우 이동"
                     android:textColor="@color/subColor800"
                     android:textSize="18dp"
                     app:layout_constraintBottom_toBottomOf="@id/FrameLayout"
                     app:layout_constraintEnd_toEndOf="@+id/FrameLayout"
-                    app:layout_constraintHorizontal_bias="0.825"
+                    app:layout_constraintStart_toStartOf="@id/FrameLayout"
+                    app:layout_constraintTop_toTopOf="@+id/FrameLayout" />
+
+                <TextView
+                    android:id="@+id/tvbtn3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="입 벌림, 목폄"
+                    android:textColor="@color/subColor800"
+                    android:textSize="18dp"
+                    app:layout_constraintBottom_toBottomOf="@id/FrameLayout"
+                    app:layout_constraintEnd_toEndOf="@+id/FrameLayout"
+                    app:layout_constraintHorizontal_bias="0.9"
                     app:layout_constraintStart_toStartOf="@id/FrameLayout"
                     app:layout_constraintTop_toTopOf="@+id/FrameLayout" />
 
@@ -277,7 +300,7 @@
         <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
             android:id="@+id/ssiv1"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="100dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
@@ -289,7 +312,7 @@
         <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
             android:id="@+id/ssiv2"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="100dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="1.0"

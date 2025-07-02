@@ -18,22 +18,16 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
-import com.skydoves.balloon.ArrowPositionRules
-import com.skydoves.balloon.Balloon
-import com.skydoves.balloon.BalloonAnimation
-import com.skydoves.balloon.BalloonSizeSpec
-import com.skydoves.balloon.showAlignTop
 import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.data.DrawLine
 import com.tangoplus.facebeauty.data.DrawRatioLine
 import com.tangoplus.facebeauty.data.FaceComparisonItem
-import com.tangoplus.facebeauty.data.RVItemType
 import com.tangoplus.facebeauty.data.db.FaceStatic
 import com.tangoplus.facebeauty.databinding.FragmentInformationDialogBinding
 import com.tangoplus.facebeauty.ui.view.GridSpacingItemDecoration
 import com.tangoplus.facebeauty.ui.view.OnAdapterMoreClickListener
 import com.tangoplus.facebeauty.ui.view.OnFaceStaticCheckListener
-import com.tangoplus.facebeauty.util.BitmapUtility.extractImageCoordinates
+import com.tangoplus.facebeauty.util.BitmapUtility.extractFaceCoordinates
 import com.tangoplus.facebeauty.util.BitmapUtility.setImage
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
@@ -85,12 +79,17 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
                         animateIndicator(false)
                         gvm.setBtnIndex(1)
                     }
+                    R.id.btn3 -> {
+                        animateIndicator(false)
+                        gvm.setBtnIndex(2)
+                    }
                 }
             }
             setImage()
         }
         binding.btn1.setOnSingleClickListener { binding.btnToggleGroup.check(R.id.btn1) }
         binding.btn2.setOnSingleClickListener { binding.btnToggleGroup.check(R.id.btn2) }
+        binding.btn3.setOnSingleClickListener { binding.btnToggleGroup.check(R.id.btn3) }
         binding.btnToggleGroup.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener{
             override fun onGlobalLayout() {
                 initToggleIndicator()
@@ -100,25 +99,23 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
         // ------# 하단 버튼토글 그룹 끝 #------
     }
     private fun initToggleIndicator() {
-        val buttonWidth = binding.btnToggleGroup.width / 2
+        val buttonWidth = binding.btnToggleGroup.width / 3
         val params = binding.toggleIndicator.layoutParams
-        params.width = buttonWidth - 36
-        params.height = binding.btnToggleGroup.height - 36
+        params.width = buttonWidth - 40
+        params.height = binding.btnToggleGroup.height - 40
         binding.toggleIndicator.layoutParams = params
-
         binding.toggleIndicator.x = 24f
     }
 
     private fun animateIndicator(toLeft: Boolean) {
         val animator = ValueAnimator.ofFloat(
             binding.toggleIndicator.x,
-            if (toLeft) 24f else (binding.btnToggleGroup.width - binding.toggleIndicator.width - 24f)
+            if (toLeft) 20f else (binding.btnToggleGroup.width - binding.toggleIndicator.width - 20f)
         )
 
         animator.addUpdateListener { animation ->
             binding.toggleIndicator.x = animation.animatedValue as Float
         }
-
         animator.duration = 250
         animator.start()
 
@@ -137,6 +134,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
     private fun setToggleText(color1: Int, color2: Int) {
         binding.tvbtn1.setTextColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(), color1)))
         binding.tvbtn2.setTextColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(), color2)))
+        binding.tvbtn3.setTextColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(), color2)))
     }
     override fun onFaceStaticCheck(drawLineIndex: Int, isChecked: Boolean) {
         val selectedLine = when (drawLineIndex) {
@@ -174,7 +172,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
         val df = DecimalFormat("#.#")
         // 값 적기
         val jsonData = gvm.currentResult.value?.results?.getJSONObject(0)
-        val coordinates = extractImageCoordinates(jsonData)
+        val coordinates = extractFaceCoordinates(jsonData)
         if (coordinates != null) {
             val vertiIndices = listOf(234, 33, 133, 362, 263, 356)
             val vertiCoordinates = vertiIndices.map { coordinates[it] }
@@ -201,48 +199,48 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
         binding.cbGDHorizon.setOnCheckedChangeListener { _, isChecked ->
             setRatioLineInImage(false, isChecked)
         }
-        binding.tvGDVerti.setOnSingleClickListener {
-            val balloon = Balloon.Builder(requireContext())
-                .setWidth(BalloonSizeSpec.WRAP)
-                .setHeight(BalloonSizeSpec.WRAP)
-                .setText("모든 비율이 1:1:1:1:1로 일정 할 수록 좋은 비율입니다.")
-                .setTextColorResource(R.color.subColor800)
-                .setTextSize(20f)
-                .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
-                .setArrowSize(0)
-                .setMargin(6)
-                .setPadding(12)
-                .setCornerRadius(8f)
-                .setBackgroundColorResource(R.color.white)
-                .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
-                .setLifecycleOwner(viewLifecycleOwner)
-                .setOnBalloonDismissListener {  }
-                .build()
-            binding.tvGDVerti.showAlignTop(balloon)
-            balloon.dismissWithDelay(3000L)
-            balloon.setOnBalloonClickListener { balloon.dismiss() }
-        }
-        binding.tvGDHorizon.setOnSingleClickListener {
-            val balloon = Balloon.Builder(requireContext())
-                .setWidth(BalloonSizeSpec.WRAP)
-                .setHeight(BalloonSizeSpec.WRAP)
-                .setText("눈썹-코끝-입술-턱끝 3:1:2에 가까울수록 하관이 좋은 비율입니다.")
-                .setTextColorResource(R.color.subColor800)
-                .setTextSize(20f)
-                .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
-                .setArrowSize(0)
-                .setMargin(6)
-                .setPadding(12)
-                .setCornerRadius(8f)
-                .setBackgroundColorResource(R.color.white)
-                .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
-                .setLifecycleOwner(viewLifecycleOwner)
-                .setOnBalloonDismissListener {  }
-                .build()
-            binding.tvGDHorizon.showAlignTop(balloon)
-            balloon.dismissWithDelay(3000L)
-            balloon.setOnBalloonClickListener { balloon.dismiss() }
-        }
+//        binding.tvGDVerti.setOnSingleClickListener {
+//            val balloon = Balloon.Builder(requireContext())
+//                .setWidth(BalloonSizeSpec.WRAP)
+//                .setHeight(BalloonSizeSpec.WRAP)
+//                .setText("모든 비율이 1:1:1:1:1로 일정 할 수록 좋은 비율입니다.")
+//                .setTextColorResource(R.color.subColor800)
+//                .setTextSize(20f)
+//                .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
+//                .setArrowSize(0)
+//                .setMargin(6)
+//                .setPadding(12)
+//                .setCornerRadius(8f)
+//                .setBackgroundColorResource(R.color.white)
+//                .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
+//                .setLifecycleOwner(viewLifecycleOwner)
+//                .setOnBalloonDismissListener {  }
+//                .build()
+//            binding.tvGDVerti.showAlignTop(balloon)
+//            balloon.dismissWithDelay(3000L)
+//            balloon.setOnBalloonClickListener { balloon.dismiss() }
+//        }
+//        binding.tvGDHorizon.setOnSingleClickListener {
+//            val balloon = Balloon.Builder(requireContext())
+//                .setWidth(BalloonSizeSpec.WRAP)
+//                .setHeight(BalloonSizeSpec.WRAP)
+//                .setText("눈썹-코끝-입술-턱끝 3:1:2에 가까울수록 하관이 좋은 비율입니다.")
+//                .setTextColorResource(R.color.subColor800)
+//                .setTextSize(20f)
+//                .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
+//                .setArrowSize(0)
+//                .setMargin(6)
+//                .setPadding(12)
+//                .setCornerRadius(8f)
+//                .setBackgroundColorResource(R.color.white)
+//                .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
+//                .setLifecycleOwner(viewLifecycleOwner)
+//                .setOnBalloonDismissListener {  }
+//                .build()
+//            binding.tvGDHorizon.showAlignTop(balloon)
+//            balloon.dismissWithDelay(3000L)
+//            balloon.setOnBalloonClickListener { balloon.dismiss() }
+//        }
     }
 
     private fun setRatioLineInImage(isVerti: Boolean, switchedOn: Boolean) {
@@ -328,16 +326,16 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
     fun buildFaceComparisonList(resting: FaceStatic, occlusal: FaceStatic): List<FaceComparisonItem> {
         return listOf(
             FaceComparisonItem("눈 수평 각도", resting.resting_eye_horizontal_angle, occlusal.occlusal_eye_horizontal_angle),
-            FaceComparisonItem("귓바퀴 수평 각도", resting.resting_earflaps_horizontal_angle, occlusal.occlusal_earflaps_horizontal_angle),
+//            FaceComparisonItem("귓바퀴 수평 각도", resting.resting_earflaps_horizontal_angle, occlusal.occlusal_earflaps_horizontal_angle),
             FaceComparisonItem("입술 끝 수평 각도", resting.resting_tip_of_lips_horizontal_angle, occlusal.occlusal_tip_of_lips_horizontal_angle),
-            FaceComparisonItem("미간-코 수직 각도", resting.resting_glabella_nose_vertical_angle, occlusal.occlusal_glabella_nose_vertical_angle),
-            FaceComparisonItem("코-턱 수직 각도", resting.resting_nose_chin_vertical_angle, occlusal.occlusal_nose_chin_vertical_angle),
-            FaceComparisonItem("좌측 귓바퀴-콧망울 수평 각도", resting.resting_left_earflaps_nasal_wing_horizontal_angle, occlusal.occlusal_left_earflaps_nasal_wing_horizontal_angle),
-            FaceComparisonItem("우측 귓바퀴-콧망울 수평 각도", resting.resting_right_earflaps_nasal_wing_horizontal_angle, occlusal.occlusal_right_earflaps_nasal_wing_horizontal_angle),
-            FaceComparisonItem("좌측 귓바퀴-코 거리", resting.resting_left_earflaps_nose_distance, occlusal.occlusal_left_earflaps_nose_distance),
-            FaceComparisonItem("우측 귓바퀴-코 거리", resting.resting_right_earflaps_nose_distance, occlusal.occlusal_right_earflaps_nose_distance),
-            FaceComparisonItem("좌측 입꼬리-입술 중앙 거리", resting.resting_left_tip_of_lips_center_lips_distance, occlusal.occlusal_left_tip_of_lips_center_lips_distance),
-            FaceComparisonItem("우측 입꼬리-입술 중앙 거리", resting.resting_right_tip_of_lips_center_lips_distance, occlusal.occlusal_right_tip_of_lips_center_lips_distance),
+//            FaceComparisonItem("미간-코 수직 각도", resting.resting_glabella_nose_vertical_angle, occlusal.occlusal_glabella_nose_vertical_angle),
+//            FaceComparisonItem("코-턱 수직 각도", resting.resting_nose_chin_vertical_angle, occlusal.occlusal_nose_chin_vertical_angle),
+//            FaceComparisonItem("좌측 귓바퀴-콧망울 수평 각도", resting.resting_left_earflaps_nasal_wing_horizontal_angle, occlusal.occlusal_left_earflaps_nasal_wing_horizontal_angle),
+//            FaceComparisonItem("우측 귓바퀴-콧망울 수평 각도", resting.resting_right_earflaps_nasal_wing_horizontal_angle, occlusal.occlusal_right_earflaps_nasal_wing_horizontal_angle),
+//            FaceComparisonItem("좌측 귓바퀴-코 거리", resting.resting_left_earflaps_nose_distance, occlusal.occlusal_left_earflaps_nose_distance),
+//            FaceComparisonItem("우측 귓바퀴-코 거리", resting.resting_right_earflaps_nose_distance, occlusal.occlusal_right_earflaps_nose_distance),
+//            FaceComparisonItem("좌측 입꼬리-입술 중앙 거리", resting.resting_left_tip_of_lips_center_lips_distance, occlusal.occlusal_left_tip_of_lips_center_lips_distance),
+//            FaceComparisonItem("우측 입꼬리-입술 중앙 거리", resting.resting_right_tip_of_lips_center_lips_distance, occlusal.occlusal_right_tip_of_lips_center_lips_distance),
         )
     }
     private fun setImage() {

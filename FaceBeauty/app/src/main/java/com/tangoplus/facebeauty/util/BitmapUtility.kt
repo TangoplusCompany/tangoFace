@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
-import android.graphics.Color
+import android.graphics.DashPathEffect
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
@@ -20,10 +20,12 @@ import com.tangoplus.facebeauty.data.DrawLine
 import com.tangoplus.facebeauty.data.DrawRatioLine
 import com.tangoplus.facebeauty.data.FaceComparisonItem
 import com.tangoplus.facebeauty.data.FaceLandmarkResult
-import com.tangoplus.facebeauty.data.FaceLandmarkResult.Companion.fromCoordinates
+import com.tangoplus.facebeauty.data.FaceLandmarkResult.Companion.fromFaceCoordinates
 import com.tangoplus.facebeauty.data.FaceResult
 import com.tangoplus.facebeauty.util.FileUtility.createMirroredOverlayImage
 import com.tangoplus.facebeauty.util.FileUtility.getPathFromContentUri
+import com.tangoplus.facebeauty.vision.pose.PoseLandmarkResult
+import com.tangoplus.facebeauty.vision.pose.PoseLandmarkResult.Companion.fromPoseCoordinates
 import com.tangoplus.facebeauty.vm.GalleryViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,7 +46,8 @@ object BitmapUtility {
             val jsonData = faceResult.results.getJSONObject(seq)
             Log.v("제이슨0", "${faceResult.results}")
             Log.v("제이슨1", "seq: $seq, json: $jsonData")
-            val coordinates = extractImageCoordinates(jsonData)
+            val faceCoordinates = extractFaceCoordinates(jsonData)
+            val poseCoordinates = extractPoseCoordinates(jsonData)
             val imageUri = faceResult.imageUris.get(seq)
             var isSet = false
 
@@ -60,7 +63,8 @@ object BitmapUtility {
                 ssiv.setOnImageEventListener(object : SubsamplingScaleImageView.OnImageEventListener {
                     override fun onReady() {
                         if (!isSet) {
-                            val faceLandmarkResult = fromCoordinates(coordinates)
+                            val faceLandmarkResult = fromFaceCoordinates(faceCoordinates)
+                            val poseLandmarkResult = fromPoseCoordinates(poseCoordinates)
                             Log.v("jsonData", "${jsonData.getJSONObject("data")}")
                             val cheekAngle = when (seq) {
                                 0 -> jsonData.getJSONObject("data").getDouble("resting_nose_chin_vertical_angle")
@@ -69,6 +73,7 @@ object BitmapUtility {
                             val combinedBitmap = combineImageAndOverlay(
                                 bitmap,
                                 faceLandmarkResult,
+                                poseLandmarkResult,
                                 gvm.currentCheckedLines,
                                 gvm.currentCheckedRatioLines,
                                 gvm.currentFaceComparision,
@@ -119,6 +124,7 @@ object BitmapUtility {
     fun combineImageAndOverlay (
         originalBitmap: Bitmap,
         faceLandmarks: FaceLandmarkResult,
+        poseLandmarks: PoseLandmarkResult,
         selectedData: MutableSet<DrawLine>,
         selectedRatioLine: MutableSet<DrawRatioLine>,
         cfc : MutableList<FaceComparisonItem>,
@@ -185,13 +191,14 @@ object BitmapUtility {
             isAntiAlias = true
             maskFilter = BlurMaskFilter(15f, BlurMaskFilter.Blur.NORMAL)
         }
-        // x, y에 들어가있는 좌표는?
-//        faceLandmarks.landmarks.forEachIndexed { index, landmark ->
-//            val x = landmark.x
-//            val y = landmark.y
-//            canvas.drawCircle(x, y, 3f, circlePaint)
-////            canvas.drawText("$index", x, y, anglePaint)
-//        }
+        val dashedPaint = Paint().apply {
+            color = "#33F40000".toColorInt()
+            strokeWidth = 4f
+            style = Paint.Style.STROKE
+
+            // Dash 설정: [길이, 간격, 길이, 간격, ...]
+            pathEffect = DashPathEffect(floatArrayOf(20f, 10f), 0f)
+        }
 
         val faceOutLineIndexes = listOf(
             10, 109, 67, 103, 54, 21, 162, 127, 234, 93, 132, 58, 172, 136, 150, 149, 176, 148,
@@ -281,6 +288,12 @@ object BitmapUtility {
         val x31 = bottomLm3.x
         val y31 = bottomLm3.y
         drawExtendedLine(canvas, x30, y30, x31, y31, 0f, 50f, axis300Paint)
+
+        // 목젖
+        val midShoulderX = (poseLandmarks.landmarks[11].x + poseLandmarks.landmarks[12].x ) / 2
+        val midShoulderY = (poseLandmarks.landmarks[11].y + poseLandmarks.landmarks[12].y ) / 2
+        drawExtendedLine(canvas, midShoulderX, midShoulderY, midShoulderX, midShoulderY + 1, 50f, 50f, axis300Paint)
+
         // ----------------------------------# 비율 계산기 #------------------------------------
         if (selectedRatioLine.contains(DrawRatioLine.A_VERTI)) {
             Log.v("비율Ratio", "${selectedRatioLine}")
@@ -661,7 +674,7 @@ object BitmapUtility {
     }
 
 
-    fun extractImageCoordinates(jsonData: JSONObject?): List<Pair<Float, Float>>? {
+    fun extractFaceCoordinates(jsonData: JSONObject?): List<Pair<Float, Float>>? {
         val poseData = jsonData?.optJSONArray("face_landmark")
         return if (poseData != null) {
             List(poseData.length()) { i ->
@@ -673,6 +686,19 @@ object BitmapUtility {
             }
         } else null
     }
+    fun extractPoseCoordinates(jsonData: JSONObject?): List<Pair<Float, Float>>? {
+        val poseData = jsonData?.optJSONArray("pose_landmark")
+        return if (poseData != null) {
+            List(poseData.length()) { i ->
+                val landmark = poseData.getJSONObject(i)
+                Pair(
+                    landmark.getDouble("sx").toFloat(),
+                    landmark.getDouble("sy").toFloat()
+                )
+            }
+        } else null
+    }
+
     fun extractAllImageCoordinates(jsonData: JSONObject?): List<Triple<Float, Float, Float>>? {
         val poseData = jsonData?.optJSONArray("face_landmark")
         return if (poseData != null) {
@@ -736,77 +762,77 @@ object BitmapUtility {
             else -> throw IllegalArgumentException("지원하지 않는 type입니다. eye, ear, lip 중 하나를 입력하세요.")
         }
     }
-    private fun setMoare(faceResult: FaceResult, seq: Int, originalBitmap: Bitmap): Bitmap {
-        val jsonData = faceResult.results.getJSONObject(seq)
-        val coordinates = extractAllImageCoordinates(jsonData)
-
-        val zValues = coordinates?.map { it.third }
-        val minZ = zValues?.minOrNull() ?: 0f
-        val maxZ = zValues?.maxOrNull() ?: 1f
-        val contourLevels = 8
-        val zStep = (maxZ - minZ) / contourLevels
-        val contourMap = mutableMapOf<Int, MutableList<PointF>>()
-
-        if (coordinates != null && coordinates.isNotEmpty()) {
-            val noseIndex = 1
-            val nose = PointF(coordinates[noseIndex].first, coordinates[noseIndex].second)
-
-            for ((x, y, z) in coordinates) {
-                val contourIndex = ((z - minZ) / zStep).toInt().coerceIn(0, contourLevels - 1)
-                contourMap.getOrPut(contourIndex) { mutableListOf() }.add(PointF(x, y))
-            }
-
-            // 각 등고선 그룹 처리
-            contourMap.forEach { (level, pointList) ->
-                if (pointList.size > 3) {
-                    // 평균 반지름으로 스무딩
-                    val avgRadius = pointList.map { p ->
-                        hypot(p.x - nose.x, p.y - nose.y)
-                    }.average().toFloat()
-
-                    pointList.forEachIndexed { index, point ->
-                        val angle = atan2(point.y - nose.y, point.x - nose.x)
-                        val currentRadius = hypot(point.x - nose.x, point.y - nose.y)
-
-                        // 얼굴 외곽 부분 감지 (이마, 턱)
-                        val isOuterArea = isOuterFaceArea(point, nose, coordinates)
-
-                        // 외곽 부분은 덜 스무딩하고, 중심부는 더 스무딩
-                        val smoothingFactor = if (isOuterArea) 0.1f else 0.7f
-                        val smoothRadius = currentRadius * (1 - smoothingFactor) + avgRadius * smoothingFactor
-
-                        pointList[index] = PointF(
-                            nose.x + cos(angle) * smoothRadius,
-                            nose.y + sin(angle) * smoothRadius
-                        )
-                    }
-
-                    pointList.sortBy { p -> atan2(p.y - nose.y, p.x - nose.x) }
-                }
-            }
-        }
-
-        val bitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true)
-        val canvas = Canvas(bitmap)
-        val paint = Paint().apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 3f
-            isAntiAlias = true
-        }
-
-        contourMap.toSortedMap().forEach { (level, points) ->
-            paint.color = Color.HSVToColor(floatArrayOf(
-                240f - level * (240f / contourLevels), 1f, 0.8f
-            ))
-
-            if (points.size > 3 && coordinates != null) {
-                val nose = PointF(coordinates[1].first, coordinates[1].second)
-                drawSegmentedContour(canvas, points, paint, nose)
-            }
-        }
-
-        return bitmap
-    }
+//    private fun setMoare(faceResult: FaceResult, seq: Int, originalBitmap: Bitmap): Bitmap {
+//        val jsonData = faceResult.results.getJSONObject(seq)
+//        val coordinates = extractAllImageCoordinates(jsonData)
+//
+//        val zValues = coordinates?.map { it.third }
+//        val minZ = zValues?.minOrNull() ?: 0f
+//        val maxZ = zValues?.maxOrNull() ?: 1f
+//        val contourLevels = 8
+//        val zStep = (maxZ - minZ) / contourLevels
+//        val contourMap = mutableMapOf<Int, MutableList<PointF>>()
+//
+//        if (coordinates != null && coordinates.isNotEmpty()) {
+//            val noseIndex = 1
+//            val nose = PointF(coordinates[noseIndex].first, coordinates[noseIndex].second)
+//
+//            for ((x, y, z) in coordinates) {
+//                val contourIndex = ((z - minZ) / zStep).toInt().coerceIn(0, contourLevels - 1)
+//                contourMap.getOrPut(contourIndex) { mutableListOf() }.add(PointF(x, y))
+//            }
+//
+//            // 각 등고선 그룹 처리
+//            contourMap.forEach { (level, pointList) ->
+//                if (pointList.size > 3) {
+//                    // 평균 반지름으로 스무딩
+//                    val avgRadius = pointList.map { p ->
+//                        hypot(p.x - nose.x, p.y - nose.y)
+//                    }.average().toFloat()
+//
+//                    pointList.forEachIndexed { index, point ->
+//                        val angle = atan2(point.y - nose.y, point.x - nose.x)
+//                        val currentRadius = hypot(point.x - nose.x, point.y - nose.y)
+//
+//                        // 얼굴 외곽 부분 감지 (이마, 턱)
+//                        val isOuterArea = isOuterFaceArea(point, nose, coordinates)
+//
+//                        // 외곽 부분은 덜 스무딩하고, 중심부는 더 스무딩
+//                        val smoothingFactor = if (isOuterArea) 0.1f else 0.7f
+//                        val smoothRadius = currentRadius * (1 - smoothingFactor) + avgRadius * smoothingFactor
+//
+//                        pointList[index] = PointF(
+//                            nose.x + cos(angle) * smoothRadius,
+//                            nose.y + sin(angle) * smoothRadius
+//                        )
+//                    }
+//
+//                    pointList.sortBy { p -> atan2(p.y - nose.y, p.x - nose.x) }
+//                }
+//            }
+//        }
+//
+//        val bitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true)
+//        val canvas = Canvas(bitmap)
+//        val paint = Paint().apply {
+//            style = Paint.Style.STROKE
+//            strokeWidth = 3f
+//            isAntiAlias = true
+//        }
+//
+//        contourMap.toSortedMap().forEach { (level, points) ->
+//            paint.color = Color.HSVToColor(floatArrayOf(
+//                240f - level * (240f / contourLevels), 1f, 0.8f
+//            ))
+//
+//            if (points.size > 3 && coordinates != null) {
+//                val nose = PointF(coordinates[1].first, coordinates[1].second)
+//                drawSegmentedContour(canvas, points, paint, nose)
+//            }
+//        }
+//
+//        return bitmap
+//    }
     // 얼굴 외곽 부분인지 판단
     private fun isOuterFaceArea(point: PointF, nose: PointF, coordinates: List<Triple<Float, Float, Float>>): Boolean {
         val angle = atan2(point.y - nose.y, point.x - nose.x)

@@ -66,8 +66,8 @@ import com.tangoplus.facebeauty.util.MathHelpers.calculateSlope
 import com.tangoplus.facebeauty.util.MathHelpers.getRealDistanceX
 import com.tangoplus.facebeauty.util.MathHelpers.setScaleX
 import com.tangoplus.facebeauty.util.SoundManager.playSound
-import com.tangoplus.facebeauty.vision.FaceBlendshapesResultAdapter
-import com.tangoplus.facebeauty.vision.FaceLandmarkerHelper
+import com.tangoplus.facebeauty.vision.face.FaceBlendshapesResultAdapter
+import com.tangoplus.facebeauty.vision.face.FaceLandmarkerHelper
 import com.tangoplus.facebeauty.vm.InputViewModel
 import com.tangoplus.facebeauty.vm.MainViewModel
 import com.tangoplus.facebeauty.vm.MeasureViewModel
@@ -89,8 +89,12 @@ import com.tangoplus.facebeauty.util.FileUtility.toJSONObject
 import com.tangoplus.facebeauty.util.MathHelpers.calculateAngle
 import com.tangoplus.facebeauty.util.MathHelpers.calculatePolygonArea
 import com.tangoplus.facebeauty.util.MathHelpers.correctingValue
+import com.tangoplus.facebeauty.util.MathHelpers.getRealDistanceY
 import com.tangoplus.facebeauty.util.PreferenceUtility
+import com.tangoplus.facebeauty.vision.pose.PoseLandmarkerHelper
 import com.tangoplus.facebeauty.vm.GalleryViewModel
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlin.math.abs
 
 class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListener {
@@ -120,6 +124,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraFacing = CameraSelector.LENS_FACING_FRONT
     private var isCountDown = false
+    // 카메라 플래그
+    private var isCameraActive = false
     /** Blocking ML operations are performed using this executor */
     private lateinit var backgroundExecutor: ExecutorService
     private lateinit var imageCapture: ImageCapture
@@ -131,7 +137,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     private val ivm : InputViewModel by viewModels()
     private val gvm : GalleryViewModel by viewModels()
     private var seqStep = MutableLiveData(0)
-    private val maxSeq = 3
+    private val maxSeq = 6
 
     private var scaleFactorX : Float? = null
     private var scaleFactorY : Float? = null
@@ -140,6 +146,9 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     private lateinit var prefsUtil : PreferenceUtility
 
     private var bounceAnimator: AnimatorSet? = null
+
+    // pose
+    private lateinit var poseLandmarker: PoseLandmarkerHelper
 
     private  val mCountDown : CountDownTimer by lazy {
         object : CountDownTimer(3000, 1000) {
@@ -156,11 +165,12 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             override fun onFinish() {
                 if (latestResult?.result?.faceLandmarks()?.isNotEmpty() == true) {
                     timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
-                    latestResult?.let { resultBundleToJson(it, seqStep.value ?: -1) }
                     hideViews()
                     if (seqStep.value != null) {
                         playSound(R.raw.camera_shutter)
-                        captureImage(seqStep.value ?: -1) {
+                        lifecycleScope.launch {
+                            captureImage(seqStep.value ?: -1)
+                            latestResult?.let { resultBundleToJson(it, seqStep.value ?: -1) }
                             viewModel.setSeqFinishedFlag(true)
                             updateUI()
                         }
@@ -178,14 +188,17 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
         // Start the FaceLandmarkerHelper again when users come back
         // to the foreground.
-        if (!hasPermissions(this)) {
-            ActivityCompat.requestPermissions(this, getRequiredPermissions(), REQUEST_CODE_PERMISSIONS)
-        } else {
-            backgroundExecutor.execute {
-                if (faceLandmarkerHelper.isClose()) {
-                    faceLandmarkerHelper.setupFaceLandmarker()
+        if (!isCameraActive) {
+            if (!hasPermissions(this)) {
+                ActivityCompat.requestPermissions(this, getRequiredPermissions(), REQUEST_CODE_PERMISSIONS)
+            } else {
+                backgroundExecutor.execute {
+                    if (faceLandmarkerHelper.isClose()) {
+                        faceLandmarkerHelper.setupFaceLandmarker()
+                    }
                 }
             }
+            isCameraActive = true
         }
     }
 
@@ -197,28 +210,38 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             viewModel.setMinFaceTrackingConfidence(faceLandmarkerHelper.minFaceTrackingConfidence)
             viewModel.setMinFacePresenceConfidence(faceLandmarkerHelper.minFacePresenceConfidence)
             viewModel.setDelegate(faceLandmarkerHelper.currentDelegate)
-
-            // Close the FaceLandmarkerHelper and release resources
-            backgroundExecutor.execute { faceLandmarkerHelper.clearFaceLandmarker() }
         }
     }
 
     override fun onStop() {
         super.onStop()
-        if(this::faceLandmarkerHelper.isInitialized) {
-            viewModel.setMaxFaces(faceLandmarkerHelper.maxNumFaces)
-            viewModel.setMinFaceDetectionConfidence(faceLandmarkerHelper.minFaceDetectionConfidence)
-            viewModel.setMinFaceTrackingConfidence(faceLandmarkerHelper.minFaceTrackingConfidence)
-            viewModel.setMinFacePresenceConfidence(faceLandmarkerHelper.minFacePresenceConfidence)
-            viewModel.setDelegate(faceLandmarkerHelper.currentDelegate)
+        isCameraActive = false
 
-            faceLandmarkerHelper.clearFaceLandmarker() // 메모리 해제
+        // onStop에서만 실제 리소스 해제
+        if(this::faceLandmarkerHelper.isInitialized) {
+            try {
+                faceLandmarkerHelper.clearFaceLandmarker()
+            } catch (e: Exception) {
+                Log.e("CameraActivity", "Error clearing face landmarker: ${e.message}")
+            }
+        }
+
+        if(this::poseLandmarker.isInitialized) {
+            try {
+                poseLandmarker.clearPoseLandmarker()
+            } catch (e: Exception) {
+                Log.e("CameraActivity", "Error clearing pose landmarker: ${e.message}")
+            }
         }
         cameraProvider?.unbindAll()
+    }
 
-        // 2. 얼굴 랜드마커 및 executor 종료
-        backgroundExecutor.shutdownNow()
-
+    override fun onDestroy() {
+        super.onDestroy()
+        // onDestroy에서 executor 종료
+        if (!backgroundExecutor.isShutdown) {
+            backgroundExecutor.shutdownNow()
+        }
     }
     override fun onStart() {
         super.onStart()
@@ -263,6 +286,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+        initializePoseLandmarker()
 
         mvm.initMeasure.observe(this) {
             if (it) {
@@ -299,14 +323,18 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 val staticJSON1 = setJo(mvm.staticJA.getJSONObject(1),1)
                 val staticJSON2 = setJo(mvm.staticJA.getJSONObject(2),2)
                 val staticJSON3 = setJo(mvm.staticJA.getJSONObject(3),3)
-                val staticJos = listOf(staticJSON0, staticJSON1, staticJSON2, staticJSON3)
+                val staticJSON4 = setJo(mvm.staticJA.getJSONObject(4),4)
+                val staticJSON5 = setJo(mvm.staticJA.getJSONObject(5),5)
+
+                val staticJos = listOf(staticJSON0, staticJSON1, staticJSON2, staticJSON3, staticJSON4, staticJSON5)
                 val transStatics = staticJos.map { it.toFaceStatic() } // static으로 변하기 -> json으로 저장 전 파일 이름과 landmark 담아야함
 
                 val mergedJOBeforeFileName = mutableListOf<JSONObject>()
-                for (i in 0 until 4) {
+                for (i in 0 until 6) {
                     val mergedJSON = JSONObject().apply {
                         put("data", JSONObject(transStatics[i].toJSONObject()))
                         put("face_landmark", mvm.coordinatesJA.getJSONArray(i))
+                        put("pose_landmark", mvm.plrJA.getJSONArray(i))
                     }
                     mergedJOBeforeFileName.add(mergedJSON)
                     val jsonPath = saveJsonToStorage(mergedJSON, mvm.staticFileNames[i].replace(".jpg", ""))
@@ -325,6 +353,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[1]),
                         getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[2]),
                         getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[3]),
+                        getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[4]),
+                        getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[5]),
                     ),
                     results = mvm.mergedJA
                 )
@@ -335,18 +365,21 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     fDao = fd.faceDao()
                     // static 2개를 만들어서 DB 저장
                     val static0 = mvm.mergedJA.getJSONObject(0).getJSONObject("data").toFaceStatic()
-                    Log.v("static0", "변환완료: $static0")
-
                     val static1 = mvm.mergedJA.getJSONObject(1).getJSONObject("data").toFaceStatic()
-                    Log.v("static1", "변환완료: $static1")
                     val static2 = mvm.mergedJA.getJSONObject(2).getJSONObject("data").toFaceStatic()
-                    val static3  = mvm.mergedJA.getJSONObject(3).getJSONObject("data").toFaceStatic()
+                    val static3 = mvm.mergedJA.getJSONObject(3).getJSONObject("data").toFaceStatic()
+                    val static4 = mvm.mergedJA.getJSONObject(4).getJSONObject("data").toFaceStatic()
+                    val static5 = mvm.mergedJA.getJSONObject(5).getJSONObject("data").toFaceStatic()
+                    Log.v("static0", "변환완료: $static0")
+                    Log.v("static1", "변환완료: $static1")
                     Log.v("static2", "변환완료: $static2")
                     Log.v("static3", "변환완료: $static3")
                     fDao.insertStatic(static0)
                     fDao.insertStatic(static1)
                     fDao.insertStatic(static2)
                     fDao.insertStatic(static3)
+                    fDao.insertStatic(static4)
+                    fDao.insertStatic(static5)
                     finishedResult.regDate = static0.reg_date
 
                     withContext(Dispatchers.Main) {
@@ -469,18 +502,15 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             binding.viewFinder.display.rotation
     }
 
-
     override fun onError(error: String, errorCode: Int) {
         runOnUiThread {
             Toast.makeText(this@CameraActivity, error, Toast.LENGTH_SHORT).show()
             faceBlendshapesResultAdapter.updateResults(null)
             faceBlendshapesResultAdapter.notifyDataSetChanged()
 
-//            if (errorCode == FaceLandmarkerHelper.GPU_ERROR) {
-//                fragmentCameraBinding.bottomSheetLayout.spinnerDelegate.setSelection(
-//                    FaceLandmarkerHelper.DELEGATE_CPU, false
-//                )
-//            }
+            if (errorCode == FaceLandmarkerHelper.GPU_ERROR) {
+               Log.e("GPU_ERROR", "$errorCode, FaceLandmarkerHelper GPU_ERROR")
+            }
         }
     }
 
@@ -529,10 +559,10 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
                 val horizontalLineVector = calculateAngle(leftEarPoint.x(), leftEarPoint.y(), noseTip.x(), noseTip.y(),rightEarPoint.x(), rightEarPoint.y())
                 val vertiBoolean = if (eyeDistanceGap < 0.275f) true else false
-                val horizonBoolean = if (seqStep.value == 2) {
-                    horizontalLineVector in 30f..80f
+                val horizonBoolean = if (seqStep.value == 5) {
+                    horizontalLineVector in 45f..85f
                 } else {
-                    horizontalLineVector in 120f..170f
+                    horizontalLineVector in 110f..150f
                 }
                 binding.overlay.setHorizon(horizonBoolean)
 //                Log.v("얼굴 중앙", "$isFaceCenter")
@@ -683,10 +713,12 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             clearAnimation()
             text = when (seq) {
                 0 -> "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요\n게이지가 차면 자동으로 촬영을 시작합니다 !"
-                1 -> "다음 단계는 교합 상태입니다\n이를 맞물리게 물고 입술을 벌려보세요"
-                2 -> "세번째 단계는 천장을 본 상태입니다.\n정면에서 턱을 들어 유지해주세요"
-                3 -> "마지막 단계는 양 볼을 부풀린 상태입니다.\n숨을 들이마시고 볼을 최대한 팽창한 상태로 유지해주세요"
-                4 -> "수고하셨습니다\n버튼을 눌러 결과를 확인해보세요"
+                1 -> "두번째, 교합 상태입니다\n이를 맞물리게 물고 입술을 벌려보세요"
+                2 -> "다음은 턱 가측 이동 상태입니다\n정면에서 아래턱을 최대한 왼쪽으로 위치해주세요"
+                3 -> "잘하셨습니다 !\n이번엔 아래턱을 최대한 오른쪽으로 위치해주세요"
+                4 -> "다섯번째는 개구상태입니다\n입을 벌려 정면을 응시해주세요"
+                5 -> "마지막 단계는 목을 편 상태입니다\n턱을 위로 들어 기다려주세요\n자동으로 촬영을 시작합니다"
+                6 -> "수고하셨습니다\n버튼을 눌러 결과를 확인해보세요"
                 else -> ""
             }
             visibility = View.VISIBLE
@@ -705,7 +737,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         // 시작 버튼 후 시작
         binding.btnShooting.isEnabled = false
         binding.tvGoGallery.isEnabled = false
-        Log.v("seqStep", "${seqStep.value} / 2")
+        Log.v("seqStep", "${seqStep.value} / 6")
         mCountDown.start()
         viewModel.setCountDownFlag(true)
         // ------! 타이머 control 끝 !------
@@ -728,7 +760,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             }
             else -> {
                 seqStep.value?.let { setGuideAnimation(it) }
-                binding.tvSeqCount.text = "${seqStep.value?.plus(1)} / 4"
+                binding.tvSeqCount.text = "${seqStep.value?.plus(1)} / 6"
                 viewModel.setCountDownFlag(false)
                 binding.fdgv.resetSuccessMode()
             }
@@ -763,37 +795,36 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         }
     }
 
-    private fun captureImage(step: Int, onComplete: () -> Unit) {
+    private suspend fun captureImage(step: Int): Boolean {
         val imageCapture = imageCapture
         val name = getFileName(step)
 
-        // 임시로 캐시에 저장할 OutputFileOptions 설정
-        val tempFile = File.createTempFile("temp_capture", ".jpg", cacheDir)
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(tempFile).build()
+        return withContext(Dispatchers.IO) {
+            suspendCancellableCoroutine { continuation ->
+                val tempFile = File.createTempFile("temp_capture", ".jpg", cacheDir)
+                val outputOptions = ImageCapture.OutputFileOptions.Builder(tempFile).build()
 
-        imageCapture.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    // 임시 파일의 URI를 생성해서 전처리 함수로 전달
-                    val tempUri = Uri.fromFile(tempFile)
-                    saveMediaToStorage(this@CameraActivity, tempUri, name)
-                    onComplete()
-                    // 임시 파일 삭제는 saveMediaToStorage에서 처리
-                    Log.d(TAG, "Photo captured and processing started")
-                }
+                imageCapture.takePicture(
+                    outputOptions,
+                    ContextCompat.getMainExecutor(this@CameraActivity),
+                    object : ImageCapture.OnImageSavedCallback {
+                        override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                            val tempUri = Uri.fromFile(tempFile)
+                            saveMediaToStorage(this@CameraActivity, tempUri, name)
+                            continuation.resume(true)
+                        }
 
-                override fun onError(exception: ImageCaptureException) {
-                    Log.e(TAG, "Photo capture failed: ${exception.message}", exception)
-                    // 에러 발생시 임시 파일 정리
-                    if (tempFile.exists()) {
-                        tempFile.delete()
+                        override fun onError(exception: ImageCaptureException) {
+                            Log.e(TAG, "Photo capture failed: ${exception.message}", exception)
+                            if (tempFile.exists()) tempFile.delete()
+                            continuation.resume(false)
+                        }
                     }
-                }
+                )
             }
-        )
+        }
     }
+
     fun saveJsonToStorage(jsonObject: JSONObject, fileName: String) : String? {
         val resolver = contentResolver
 
@@ -888,12 +919,55 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 contentValues
             )
 
+            // --------------------------# 목젖 위치를 잡기 위한 detectAsync #-------------------------
+            Log.v("포즈 들가자", "${seqStep.value}")
+            val resultBundle = poseLandmarker.detectImage(bitmap)
+            if (resultBundle?.results?.first()?.landmarks()?.isNotEmpty() == true) {
+                val plr = resultBundle.results.first().landmarks()[0]
+//                    val tempLandmarks = mutableMapOf<Int, Triple<Float, Float, Float>>()
+//                    // 원시데이터 pose 33개
+//                    plr.forEachIndexed { index, poseLandmark ->
+//                        tempLandmarks[index] = Triple(
+//                            poseLandmark.x(),
+//                            poseLandmark.y(),
+//                            poseLandmark.z()
+//                        )
+//                    }
+                mvm.tempPlrJA = JSONArray()
+                plr.forEachIndexed { index, _ ->
+                    val swapIndex = if (index >= 7 && index % 2 == 0) index - 1 // 짝수인 경우 뒤의 홀수 인덱스로 교체
+                    else if (index >= 7) index + 1 // 홀수인 경우 앞의 짝수 인덱스로 교체
+                    else index // 7 미만인 경우 그대로 사용
+                    val targetLandmark = plr[swapIndex]
+
+                    val scaledX = calculateScreenX(targetLandmark.x())
+                    val scaledY = calculateScreenY(targetLandmark.y())
+
+                    val jo = JSONObject().apply {
+                        put("index", index)
+                        put("isActive", true)
+                        put("sx", scaledX)
+                        put("sy", scaledY)
+                        put("wx", targetLandmark.x())
+                        put("wy", targetLandmark.y())
+                        put("wz", targetLandmark.z())
+                    }
+
+//                        if (index in listOf(7, 8, 11, 12)) {
+//                            Log.v("포즈 들가자", "${index} : (${calculateScreenX(targetLandmark.x()).roundToInt()}, ${calculateScreenY(targetLandmark.y()).roundToInt()}), 원본: (${tempLandmarks[index]?.first}, ${tempLandmarks[index]?.second})")
+//                        }
+                    mvm.tempPlrJA.put(jo)
+                    mvm.currentPlrCoordinate.add(Pair(scaledX, scaledY)) // 33 개가 다 담김 // TODO 그냥 일단 다 담고 잘 되면 4개만 넣는 걸로
+                }
+                // 마지막 자세만 값 저장
+                mvm.plrJA.put(mvm.tempPlrJA)
+            }
+            // -------------------------# 목젖 위치를 잡기 위한 detectAsync 끝 #-----------------------
             imageUri?.let { imageURI ->
                 context.contentResolver.openOutputStream(imageURI)?.use { outputStream ->
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
                     outputStream.flush()
                 }
-
                 Log.d("SaveMedia", "Image saved to Pictures/TangoBeauty: $fileName$extension")
             } ?: run {
                 Log.e("SaveMedia", "Failed to create image URI")
@@ -921,13 +995,44 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
     private fun getFileName(step: Int) : String {
         return when (step) {
-            0 -> "1-1-$timestamp"
-            1 -> "2-2-$timestamp"
-            2 -> "3-3-$timestamp"
-            3 -> "4-4-$timestamp"
+            0 -> "1-$timestamp"
+            1 -> "2-$timestamp"
+            2 -> "3-$timestamp"
+            3 -> "4-$timestamp"
+            4 -> "5-$timestamp"
+            5 -> "6-$timestamp"
             else -> ""
         }
     }
+    // --------------------------------- # pose landmark # -----------------------------------------
+    private val poseLandmarkListener = object : PoseLandmarkerHelper.LandmarkerListener {
+        override fun onError(error: String, errorCode: Int) {
+            runOnUiThread {
+                Log.e("PoseLandmark", "Pose detection error: $error $errorCode")
+                Toast.makeText(this@CameraActivity, "Pose detection error: $error", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        override fun onResults(resultBundle: PoseLandmarkerHelper.ResultBundle) {}
+    }
+    private fun initializePoseLandmarker() {
+        try {
+            poseLandmarker = PoseLandmarkerHelper(
+                context = this, // 이제 this가 완전히 초기화된 상태
+                runningMode = RunningMode.IMAGE,
+                minPoseDetectionConfidence = PoseLandmarkerHelper.DEFAULT_POSE_DETECTION_CONFIDENCE,
+                minPoseTrackingConfidence = PoseLandmarkerHelper.DEFAULT_POSE_TRACKING_CONFIDENCE,
+                minPosePresenceConfidence = PoseLandmarkerHelper.DEFAULT_POSE_PRESENCE_CONFIDENCE,
+                currentDelegate = PoseLandmarkerHelper.DELEGATE_CPU,
+                poseLandmarkerHelperListener = poseLandmarkListener
+            )
+            Log.d("PoseLandmarker", "Initialization successful!")
+        } catch (e: Exception) {
+            Log.e("PoseLandmarker", "Failed to initialize: ${e.message}", e)
+        }
+    }
+
+
 
     fun resultBundleToJson(resultBundle: FaceLandmarkerHelper.ResultBundle?, step: Int) {
         if (scaleFactorX == null && scaleFactorY == null) {
@@ -945,7 +1050,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
 
         if (resultBundle?.result?.faceLandmarks()?.isNotEmpty() == true) {
-            val plr = resultBundle.result.faceLandmarks()?.get(0)
+            val flr = resultBundle.result.faceLandmarks()?.get(0)
 
             /* 1. 키오스크 -> pose좌표까지 좌우 반전 -> 8이 왼쪽 어깨
             *  2. 일치시키기 위해 모바일 pose좌표 -> 동일
@@ -959,7 +1064,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             mvm.currentCoordinate.clear()
             mvm.relativeCoordinate.clear()
             mvm.tempCoordinateJA = JSONArray()
-            plr?.forEachIndexed { index, faceLandmark ->
+            flr?.forEachIndexed { index, faceLandmark ->
                 val scaledX = calculateScreenX(faceLandmark.x())
                 val scaledY = calculateScreenY(faceLandmark.y())
 
@@ -973,140 +1078,176 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     put("wz", faceLandmark.z())
                 }
                 mvm.tempCoordinateJA.put(jo)
-//                when (step) {
-//                    0 -> mvm.coordinates0.put(jo)
-//                    1 -> mvm.coordinates1.put(jo)
-//                }
                 mvm.currentCoordinate.add(Pair(scaledX, scaledY))
                 mvm.relativeCoordinate.add(Pair(faceLandmark.x(), faceLandmark.y()))
             }
             // seq 1개의 좌표를 담고 tempCoordinates는 초기화
             mvm.coordinatesJA.put(mvm.tempCoordinateJA)
-            val vmPlr = mvm.currentCoordinate
-            val vmRePlr = mvm.relativeCoordinate
+            val vmFlr = mvm.currentCoordinate
             when (step) {
                 0 -> {
+                    val eyeBrowAngle = calculateSlope(vmFlr[107].first , vmFlr[107].second, vmFlr[336].first, vmFlr[336].second)
+
                     // 468: 실제 오른쪽 눈  473: 실제 왼쪽 눈
-                    val eyeAngle = calculateSlope(vmPlr[468].first , vmPlr[468].second, vmPlr[473].first, vmPlr[473].second)
+                    val eyeAngle = calculateSlope(vmFlr[468].first , vmFlr[468].second, vmFlr[473].first, vmFlr[473].second)
                     val correctionValue = 180f - eyeAngle
-                    // 234: 오른쪽 귓바퀴 454: 왼쪽 귓바퀴
-                    val earFlapsAngle = calculateSlope(vmPlr[234].first, vmPlr[234].second, vmPlr[454].first, vmPlr[454].second)
-                    val correctEarFlapsAngle = correctingValue(earFlapsAngle, correctionValue)
                     // 입술끝 왼: 291 오: 61
-                    val tipOfLipsAngle = calculateSlope(vmPlr[61].first, vmPlr[61].second, vmPlr[291].first, vmPlr[291].second)
+                    val tipOfLipsAngle = calculateSlope(vmFlr[61].first, vmFlr[61].second, vmFlr[291].first, vmFlr[291].second)
                     val correctTipOfLipsAngle = correctingValue(tipOfLipsAngle, correctionValue)
-                    // 미간-코
-                    val glabellaNoseAngle = calculateSlope(vmPlr[1].first, vmPlr[1].second, vmPlr[8].first, vmPlr[8].second)
-
-                    // 코-턱
-                    val noseChinAngle = calculateSlope(vmPlr[152].first, vmPlr[152].second, vmPlr[1].first, vmPlr[1].second)
-
-                    // 콧날개 오 64 왼 294
-                    val earFlapNasalWingAngles =  Pair(
-                        calculateSlope(vmPlr[234].first, vmPlr[234].second, vmPlr[64].first, vmPlr[64].second),
-                        calculateSlope(vmPlr[294].first, vmPlr[294].second, vmPlr[454].first, vmPlr[454].second)
+                    // 턱
+                    val tipOfChinsAngle = calculateSlope(vmFlr[148].first, vmFlr[148].second, vmFlr[377].first, vmFlr[377].second)
+                    val correctTipOfChinsAngle = correctingValue(tipOfChinsAngle, correctionValue)
+                    val canthusOralAngle = Pair(
+                        calculateSlope(vmFlr[33].first, vmFlr[33].second, vmFlr[61].first, vmFlr[61].second),
+                        calculateSlope(vmFlr[291].first, vmFlr[291].second, vmFlr[263].first, vmFlr[263].second)
                     )
-                    // 귓바퀴-코 거리
-                    val earFlapNoseDistance =  Pair(
-                        getRealDistanceX(Pair(vmRePlr[1].first, vmRePlr[1].second), Pair(vmRePlr[234].first, vmRePlr[234].second)),
-                        getRealDistanceX(Pair(vmRePlr[1].first, vmRePlr[1].second), Pair(vmRePlr[454].first, vmRePlr[454].second))
+                    val nasalWingLipsAngle = Pair(
+                        calculateSlope(vmFlr[64].first, vmFlr[64].second, vmFlr[61].first, vmFlr[61].second),
+                        calculateSlope(vmFlr[291].first, vmFlr[291].second, vmFlr[294].first, vmFlr[294].second)
                     )
-                    // 입술산 중앙 - 양 입술 거리
-                    val tipOfLipsCenterLipsDistance = Pair(
-                        getRealDistanceX(Pair(vmRePlr[291].first, vmRePlr[291].second), Pair(vmRePlr[0].first, vmRePlr[0].second)),
-                        getRealDistanceX(Pair(vmRePlr[61].first, vmRePlr[61].second), Pair(vmRePlr[0].first, vmRePlr[0].second))
-                        )
-                    // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
-                    val tempStatic = JSONObject().apply {
-                        put("resting_eye_horizontal_angle", eyeAngle)
-                        put("resting_earflaps_horizontal_angle", correctEarFlapsAngle)
-                        put("resting_tip_of_lips_horizontal_angle", correctTipOfLipsAngle)
-                        put("resting_glabella_nose_vertical_angle", glabellaNoseAngle)
-                        put("resting_nose_chin_vertical_angle", noseChinAngle)
-                        put("resting_left_earflaps_nasal_wing_horizontal_angle", earFlapNasalWingAngles.first)
-                        put("resting_right_earflaps_nasal_wing_horizontal_angle", earFlapNasalWingAngles.second)
-                        put("resting_left_earflaps_nose_distance", earFlapNoseDistance.first)
-                        put("resting_right_earflaps_nose_distance", earFlapNoseDistance.second)
-                        put("resting_left_tip_of_lips_center_lips_distance", tipOfLipsCenterLipsDistance.first)
-                        put("resting_right_tip_of_lips_center_lips_distance", tipOfLipsCenterLipsDistance.second)
-                    }
-                    mvm.staticJA.put(tempStatic)
-                    Log.v("정면 각도들", "eyeAngle: $eyeAngle earFlapsAngle: $earFlapsAngle tipOfLipsAngle: $tipOfLipsAngle glabellaNoseAngle: $glabellaNoseAngle noseChinAngle: $noseChinAngle earFlapNasalWingAngle:$earFlapNasalWingAngles earFlapNoseDistance: $earFlapNoseDistance tipOfLipsCenterLipsDistance: $tipOfLipsCenterLipsDistance")
-//                    Log.v("제이슨", "${}")
-                }
-                1 -> {
-                    // 468: 실제 오른쪽 눈  473: 실제 왼쪽 눈
-                    val eyeAngle = calculateSlope(vmPlr[468].first , vmPlr[468].second, vmPlr[473].first, vmPlr[473].second)
-                    val correctionValue = 180f - eyeAngle
-                    // 234: 오른쪽 귓바퀴 454: 왼쪽 귓바퀴
-                    val earFlapsAngle = calculateSlope(vmPlr[234].first, vmPlr[234].second, vmPlr[454].first, vmPlr[454].second)
-                    val correctEarFlapsAngle = correctingValue(earFlapsAngle, correctionValue)
-                    // 입술끝 왼: 291 오: 61
-                    val tipOfLipsAngle = calculateSlope(vmPlr[61].first, vmPlr[61].second, vmPlr[291].first, vmPlr[291].second)
-                    val correctTipOfLipsAngle = correctingValue(tipOfLipsAngle, correctionValue)
-                    // 미간-코
-                    val glabellaNoseAngle = calculateSlope(vmPlr[1].first, vmPlr[1].second, vmPlr[8].first, vmPlr[8].second)
-                    // 코-턱
-                    val noseChinAngle = calculateSlope(vmPlr[152].first, vmPlr[152].second, vmPlr[1].first, vmPlr[1].second)
-                    // 콧날개 오 64 왼 294
-                    val earFlapNasalWingAngles =  Pair(
-                        calculateSlope(vmPlr[234].first, vmPlr[234].second, vmPlr[64].first, vmPlr[64].second),
-                        calculateSlope(vmPlr[294].first, vmPlr[294].second, vmPlr[454].first, vmPlr[454].second)
-                    )
-
-                    // 귓바퀴-코 거리
-                    val earFlapNoseDistance =  Pair(
-                        getRealDistanceX(Pair(vmRePlr[1].first, vmRePlr[1].second), Pair(vmRePlr[234].first, vmRePlr[234].second)),
-                        getRealDistanceX(Pair(vmRePlr[1].first, vmRePlr[1].second), Pair(vmRePlr[454].first, vmRePlr[454].second))
-                    )
-                    // 입술산 중앙 - 양 입술 거리
-                    val tipOfLipsCenterLipsDistance = Pair(
-                        getRealDistanceX(Pair(vmRePlr[291].first, vmRePlr[291].second), Pair(vmRePlr[0].first, vmRePlr[0].second)),
-                        getRealDistanceX( Pair(vmRePlr[64].first, vmRePlr[64].second), Pair(vmRePlr[0].first, vmRePlr[0].second))
-                    )
-
-                    val tempStatic = JSONObject().apply {
-                        put("occlusal_eye_horizontal_angle", eyeAngle)
-                        put("occlusal_earflaps_horizontal_angle", correctEarFlapsAngle)
-                        put("occlusal_tip_of_lips_horizontal_angle", correctTipOfLipsAngle)
-                        put("occlusal_glabella_nose_vertical_angle", glabellaNoseAngle)
-                        put("occlusal_nose_chin_vertical_angle", noseChinAngle)
-                        put("occlusal_left_earflaps_nasal_wing_horizontal_angle", earFlapNasalWingAngles.first)
-                        put("occlusal_right_earflaps_nasal_wing_horizontal_angle", earFlapNasalWingAngles.second)
-                        put("occlusal_left_earflaps_nose_distance", earFlapNoseDistance.first)
-                        put("occlusal_right_earflaps_nose_distance", earFlapNoseDistance.second)
-                        put("occlusal_left_tip_of_lips_center_lips_distance", tipOfLipsCenterLipsDistance.first)
-                        put("occlusal_right_tip_of_lips_center_lips_distance", tipOfLipsCenterLipsDistance.second)
-                    }
-                    mvm.staticJA.put(tempStatic)
-                    Log.v("악물었을 때", "eyeAngle: $eyeAngle earFlapsAngle: $earFlapsAngle tipOfLipsAngle: $tipOfLipsAngle glabellaNoseAngle: $glabellaNoseAngle noseChinAngle: $noseChinAngle earFlapNasalWingAngle:$earFlapNasalWingAngles earFlapNoseDistance: $earFlapNoseDistance tipOfLipsCenterLipsDistance: $tipOfLipsCenterLipsDistance")
-                    Log.v("제이슨", "$tempStatic")
-                }
-                2 -> {
-                    val glabellaChinVerticalAngle = calculateSlope(vmPlr[152].first, vmPlr[152].second, vmPlr[8].first, vmPlr[8].second)
-                    val tempStatic = JSONObject().apply {
-                        put("neck_gaze_glabella_chin_vertical_angle", glabellaChinVerticalAngle)
-                    }
-                    mvm.staticJA.put(tempStatic)
-                    Log.v("고개 치켜들었을 때 ", "neck_gaze_glabella_chin_vertical_angle: $glabellaChinVerticalAngle")
-                    Log.v("제이슨", "$tempStatic")
-                }
-                3 -> {
-                    val leftCheeks = listOf(49, 142, 101, 50, 123, 147, 213, 138, 135, 169, 170, 140, 208, 201 ,83, 182, 106, 43, 61, 165)
-                    val rightCheeks = listOf(279, 371, 330, 280, 352, 378, 433, 367, 364, 394, 395, 369, 396, 428, 421, 313, 406, 335, 273, 291, 391)
-                    val leftCheeksPoint = leftCheeks.map { vmPlr[it] }
-                    val rightCheeksPoint = rightCheeks.map { vmPlr[it] }
-                    val puffedCheeksCheeksExtents = Pair(
+                    val leftCheeks = listOf(197, 127, 234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152)
+                    val rightCheeks = listOf(197, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152)
+                    val leftCheeksPoint = leftCheeks.map { vmFlr[it] }
+                    val rightCheeksPoint = rightCheeks.map { vmFlr[it] }
+                    val cheeksExtents = Pair(
                         calculatePolygonArea(leftCheeksPoint),
                         calculatePolygonArea(rightCheeksPoint)
                     )
+                    // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
                     val tempStatic = JSONObject().apply {
-                        put("puffed_cheeks_left_cheeks_extent", puffedCheeksCheeksExtents.first)
-                        put("puffed_cheeks_right_cheeks_extent", puffedCheeksCheeksExtents.second)
+                        put("resting_eye_horizontal_angle", eyeAngle)
+                        put("resting_eyebrow_horizontal_angle", eyeBrowAngle)
+                        put("resting_tip_of_lips_horizontal_angle", correctTipOfLipsAngle)
+                        put("resting_tip_of_chin_horizontal_angle", correctTipOfChinsAngle)
+                        put("resting_canthus_oral_left_vertical_angle", canthusOralAngle.second)
+                        put("resting_canthus_oral_right_vertical_angle", canthusOralAngle.first)
+                        put("resting_nasal_wing_tip_of_lips_left_vertical_angle", nasalWingLipsAngle.second)
+                        put("resting_nasal_wing_tip_of_lips_right_vertical_angle", nasalWingLipsAngle.first)
+                        put("resting_left_cheeks_extent", cheeksExtents.second)
+                        put("resting_right_cheeks_extent", cheeksExtents.first)
+
                     }
                     mvm.staticJA.put(tempStatic)
-                    Log.v("고개 치켜들었을 때 ", "neck_gaze_glabella_chin_vertical_angle: $puffedCheeksCheeksExtents")
-                    Log.v("제이슨", "$tempStatic")
+                    Log.v("정면 각도들", "eyeAngle: $eyeAngle eyebrowAngle: $eyeBrowAngle tipOfLipsAngle: $tipOfLipsAngle chinAngle: $correctTipOfChinsAngle canthusOralAngle: $canthusOralAngle nasalWingLipsAngle:$nasalWingLipsAngle, cheeksExtent: $cheeksExtents")
+//                    Log.v("제이슨", "${}")
+                }
+                1 -> {
+                    val eyeBrowAngle = calculateSlope(vmFlr[107].first , vmFlr[107].second, vmFlr[336].first, vmFlr[336].second)
+
+                    // 468: 실제 오른쪽 눈  473: 실제 왼쪽 눈
+                    val eyeAngle = calculateSlope(vmFlr[468].first , vmFlr[468].second, vmFlr[473].first, vmFlr[473].second)
+                    val correctionValue = 180f - eyeAngle
+                    // 입술끝 왼: 291 오: 61
+                    val tipOfLipsAngle = calculateSlope(vmFlr[61].first, vmFlr[61].second, vmFlr[291].first, vmFlr[291].second)
+                    val correctTipOfLipsAngle = correctingValue(tipOfLipsAngle, correctionValue)
+                    // 턱
+                    val tipOfChinsAngle = calculateSlope(vmFlr[148].first, vmFlr[148].second, vmFlr[377].first, vmFlr[377].second)
+                    val correctTipOfChinsAngle = correctingValue(tipOfChinsAngle, correctionValue)
+                    val canthusOralAngle = Pair(
+                        calculateSlope(vmFlr[33].first, vmFlr[33].second, vmFlr[61].first, vmFlr[61].second),
+                        calculateSlope(vmFlr[291].first, vmFlr[291].second, vmFlr[263].first, vmFlr[263].second)
+                    )
+                    val nasalWingLipsAngle = Pair(
+                        calculateSlope(vmFlr[64].first, vmFlr[64].second, vmFlr[61].first, vmFlr[61].second),
+                        calculateSlope(vmFlr[291].first, vmFlr[291].second, vmFlr[294].first, vmFlr[294].second)
+                    )
+                    val leftCheeks = listOf(197, 127, 234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152)
+                    val rightCheeks = listOf(197, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152)
+                    val leftCheeksPoint = leftCheeks.map { vmFlr[it] }
+                    val rightCheeksPoint = rightCheeks.map { vmFlr[it] }
+                    val cheeksExtents = Pair(
+                        calculatePolygonArea(leftCheeksPoint),
+                        calculatePolygonArea(rightCheeksPoint)
+                    )
+                    // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
+                    val tempStatic = JSONObject().apply {
+                        put("occlusal_eye_horizontal_angle", eyeAngle)
+                        put("occlusal_eyebrow_horizontal_angle", eyeBrowAngle)
+                        put("occlusal_tip_of_lips_horizontal_angle", correctTipOfLipsAngle)
+                        put("occlusal_tip_of_chin_horizontal_angle", correctTipOfChinsAngle)
+                        put("occlusal_canthus_oral_left_vertical_angle", canthusOralAngle.second)
+                        put("occlusal_canthus_oral_right_vertical_angle", canthusOralAngle.first)
+                        put("occlusal_nasal_wing_tip_of_lips_left_vertical_angle", nasalWingLipsAngle.second)
+                        put("occlusal_nasal_wing_tip_of_lips_right_vertical_angle", nasalWingLipsAngle.first)
+                        put("occlusal_left_cheeks_extent", cheeksExtents.second)
+                        put("occlusal_right_cheeks_extent", cheeksExtents.first)
+
+                    }
+                    mvm.staticJA.put(tempStatic)
+                    Log.v("교합 각도들", "eyeAngle: $eyeAngle eyebrowAngle: $eyeBrowAngle tipOfLipsAngle: $tipOfLipsAngle chinAngle: $correctTipOfChinsAngle canthusOralAngle: $canthusOralAngle nasalWingLipsAngle:$nasalWingLipsAngle, cheeksExtent: $cheeksExtents")
+//                    Log.v("제이슨", "${}")
+                }
+                2 -> {
+                    val tiltNoseChinAngle = calculateSlope(vmFlr[1].first , vmFlr[1].second, vmFlr[152].first, vmFlr[152].second)
+                    val tiltTipOfLipsAngle = calculateSlope(vmFlr[61].first , vmFlr[1].second, vmFlr[291].first, vmFlr[291].second)
+                    val mandibularDistance = Pair(
+                        getRealDistanceX(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[58].first, vmFlr[58].second)),
+                        getRealDistanceX(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[288].first, vmFlr[288].second))
+                    )
+
+                    // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
+                    val tempStatic = JSONObject().apply {
+                        put("jaw_left_tilt_nose_chin_vertical_angle", tiltNoseChinAngle)
+                        put("jaw_left_tilt_tip_of_lips_horizontal_anngle", tiltTipOfLipsAngle)
+                        put("jaw_left_tilt_left_mandibular_distance", mandibularDistance.second)
+                        put("jaw_left_tilt_right_mandibular_distance", mandibularDistance.first)
+
+                    }
+                    mvm.staticJA.put(tempStatic)
+                    Log.v("왼쪽 턱 쏠림 각도들", "noseChinAngle: $tiltNoseChinAngle tipOfLipsAngle: $tiltTipOfLipsAngle  mandibularDistance: $mandibularDistance")
+                }
+                3 -> {
+                    val tiltNoseChinAngle = calculateSlope(vmFlr[1].first , vmFlr[1].second, vmFlr[152].first, vmFlr[152].second)
+                    val tiltTipOfLipsAngle = calculateSlope(vmFlr[61].first , vmFlr[1].second, vmFlr[291].first, vmFlr[291].second)
+                    val mandibularDistance = Pair(
+                        getRealDistanceX(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[58].first, vmFlr[58].second)),
+                        getRealDistanceX(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[288].first, vmFlr[288].second))
+                    )
+
+                    // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
+                    val tempStatic = JSONObject().apply {
+                        put("jaw_right_tilt_nose_chin_vertical_angle", tiltNoseChinAngle)
+                        put("jaw_right_tilt_tip_of_lips_horizontal_anngle", tiltTipOfLipsAngle)
+                        put("jaw_right_tilt_left_mandibular_distance", mandibularDistance.second)
+                        put("jaw_right_tilt_right_mandibular_distance", mandibularDistance.first)
+
+                    }
+                    mvm.staticJA.put(tempStatic)
+                    Log.v("오른쪽 턱 쏠림 각도들", "noseChinAngle: $tiltNoseChinAngle tipOfLipsAngle: $tiltTipOfLipsAngle  mandibularDistance: $mandibularDistance")
+
+                }
+                4 -> {
+                    val openingLipsDisance = getRealDistanceY(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[14].first, vmFlr[14].second))
+                    val openingLipsAngle = calculateSlope(vmFlr[13].first , vmFlr[13].second, vmFlr[14].first, vmFlr[14].second)
+
+                    // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
+                    val tempStatic = JSONObject().apply {
+                        put("jaw_opening_lips_distance", openingLipsDisance)
+                        put("jaw_opening_lips_vertical_angle", openingLipsAngle)
+                    }
+                    mvm.staticJA.put(tempStatic)
+                    Log.v("입 벌림 각도들", "openingLipsDisance: $openingLipsDisance openingLipsAngle: $openingLipsAngle ")
+
+                }
+                5 -> {
+                    // TODO 이 값들은 전부 pose_landmark를 사용해야 함
+                    val plr = mvm.currentPlrCoordinate
+
+                    val shoulderHorizontalAngle = calculateSlope(plr[11].first , plr[11].second, plr[12].first, plr[12].second)
+                    val earHorizontalAngle = calculateSlope(plr[7].first , plr[7].second, plr[8].first, plr[8].second)
+
+                    val midShoulder = Pair((plr[11].first + plr[12].first)/ 2, (plr[11].second + plr[12].second) / 2)
+                    val neckVerticalAngle = calculateSlope(midShoulder.first , midShoulder.second, vmFlr[1].first, vmFlr[1].second)
+
+                    // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
+                    val tempStatic = JSONObject().apply {
+                        put("neck_extention_shoulder_horizontal_angle", shoulderHorizontalAngle)
+                        put("neck_extention_ear_horizontal_angle", earHorizontalAngle)
+                        put("neck_extention_neck_vertical_angle", neckVerticalAngle)
+                    }
+                    mvm.staticJA.put(tempStatic)
+                    Log.v("고개 젖힘", "shoulderHorizontalAngle: $shoulderHorizontalAngle earHorizontalAngle: $earHorizontalAngle  neckVerticalAngle: $neckVerticalAngle")
+
                 }
             }
             mvm.currentFaceLandmarks = JSONArray()

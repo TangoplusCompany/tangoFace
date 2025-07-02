@@ -12,35 +12,28 @@ import java.time.format.DateTimeFormatter
 
 class MeasureViewModel : ViewModel() {
     // static데이터만 담는 곳
-
     val staticJA = JSONArray()
+    // 중간 임시 저장 좌표들
     var tempCoordinateJA = JSONArray()
+    // 측정 완료 시 저장할 좌표 저장
     var coordinatesJA = JSONArray()
 
+    // 각도+좌표가 합쳐진 result
     val mergedJA = JSONArray()
-//    var staticJson0 = JSONObject()
-//    var staticJson1 = JSONObject()
-//    var staticJson2 = JSONObject()
-//    var staticJson3 = JSONObject()
-    // faceLandmark 좌표들
-//    var coordinates0 = JSONArray()
-//    var coordinates1 = JSONArray()
-//    var coordinates2 = JSONArray()
-//    var coordinates3 = JSONArray()
 
     var currentFaceLandmarks = JSONArray()
     // 현재 얼굴 좌표들 전부 담는 곳 ( 절대 좌표)
     var currentCoordinate = mutableListOf<Pair<Float, Float>>()
     var relativeCoordinate = mutableListOf<Pair<Float, Float>>()
     // static 데이터 + 좌표값 통합된 JSON
-//    var mergedJson0 = JSONObject()
-//    var mergedJson1 = JSONObject()
     val staticFileNames = mutableListOf<String>()
-//    var static0FileName : String? = null
-//    var static1FileName : String? = null
 
     var initMeasure = MutableLiveData(true)
     var currentUUID = ""
+
+    val plrJA = JSONArray()
+    var tempPlrJA = JSONArray()
+    val currentPlrCoordinate = mutableListOf<Pair<Float, Float>>()
 
     fun getCurrentDateTime(): String =
         LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))

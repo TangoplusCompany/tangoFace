@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import net.sqlcipher.database.SupportFactory
 
-@Database(entities = [FaceStatic::class], version = 1)
+@Database(entities = [FaceStatic::class], version = 2)
 abstract class FaceDatabase : RoomDatabase() {
     abstract fun faceDao() : FaceDao
 
