@@ -1,6 +1,8 @@
 package com.tangoplus.facebeauty.vm
 
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.tangoplus.facebeauty.data.FaceResult
 import com.tangoplus.facebeauty.vision.face.FaceLandmarkerHelper
 
 class MainViewModel : ViewModel() {
@@ -79,4 +81,22 @@ class MainViewModel : ViewModel() {
     fun getSeqFinishedFlag() : Boolean {
         return isSeqFinished
     }
+
+    val currentFaceResults = mutableListOf<FaceResult>()
+
+    // 비교일 경우
+    private var comparisonState = false
+
+    fun setComparisonState(isComparison : Boolean) {
+        comparisonState = isComparison
+    }
+    fun getComparisonState() : Boolean {
+        return comparisonState
+    }
+
+    var comparisonDoubleItem : Pair<FaceResult?, FaceResult?>? = null
+    var tempComparisonDoubleItem = MutableLiveData(mutableListOf<FaceResult>())
+    val currentResult = MutableLiveData<FaceResult>()
+
+    var isMeasureFinish = false
 }

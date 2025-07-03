@@ -1,25 +1,29 @@
-package com.tangoplus.facebeauty.ui
+package com.tangoplus.facebeauty.ui.adapter
 
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.data.FaceResult
 import com.tangoplus.facebeauty.databinding.RvMeasureItemBinding
-import com.tangoplus.facebeauty.ui.view.OnMeasureClickListener
+import com.tangoplus.facebeauty.ui.listener.OnMeasureClickListener
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
+import com.tangoplus.facebeauty.vm.MainViewModel
 
-class MeasureRVAdapter(private val context: Context, private val faceResults: List<FaceResult>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class MeasureRVAdapter(private val context: Context, private val faceResults: List<FaceResult>, private val mvm : MainViewModel) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     var measureClickListener : OnMeasureClickListener? = null
 
     inner class MeasureViewHolder(view: View): RecyclerView.ViewHolder(view) {
         val clMI : ConstraintLayout = view.findViewById(R.id.clMI)
         val tvMIDate : TextView = view.findViewById(R.id.tvMIDate)
         val tvMINameMobile : TextView = view.findViewById(R.id.tvMINameMobile)
+        val ivMICheck : ImageView = view.findViewById(R.id.ivMICheck)
     }
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
@@ -38,7 +42,27 @@ class MeasureRVAdapter(private val context: Context, private val faceResults: Li
             holder.tvMINameMobile.text = mergedNameMobile
 
             holder.clMI.setOnSingleClickListener {
-                measureClickListener?.onMeasureClick(currentItem.tempServerSn)
+
+                // 비교 상황
+                when (mvm.getComparisonState()) {
+                    true -> {
+                        if (mvm.tempComparisonDoubleItem.value != null && mvm.tempComparisonDoubleItem.value?.size!! < 2) {
+                            if (currentItem in mvm.tempComparisonDoubleItem.value!!) {
+                                mvm.tempComparisonDoubleItem.value!!.remove(currentItem)
+                                holder.clMI.background = ContextCompat.getDrawable(context, R.drawable.effect_20)
+                                holder.ivMICheck.visibility = View.INVISIBLE
+                            } else {
+                                mvm.tempComparisonDoubleItem.value!!.add(currentItem)
+                                holder.clMI.background = ContextCompat.getDrawable(context, R.drawable.effect_stroke_20)
+                                holder.ivMICheck.visibility = View.VISIBLE
+                            }
+                        }
+                    }
+                    false -> {
+                        measureClickListener?.onMeasureClick(currentItem.tempServerSn)
+                    }
+                }
+
             }
         }
     }

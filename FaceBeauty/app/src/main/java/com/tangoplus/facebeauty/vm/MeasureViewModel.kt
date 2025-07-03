@@ -1,12 +1,8 @@
 package com.tangoplus.facebeauty.vm
 
-import android.net.Uri
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.tangoplus.facebeauty.data.FaceResult
 import org.json.JSONArray
-import org.json.JSONObject
-import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 

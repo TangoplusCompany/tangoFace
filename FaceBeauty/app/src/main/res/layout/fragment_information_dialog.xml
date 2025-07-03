@@ -28,161 +28,199 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <ImageView
-                    android:id="@+id/imageView"
-                    android:layout_width="wrap_content"
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="498dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="20dp"
-                    android:src="@drawable/drawable_legend"
-                    android:visibility="invisible"
-                    app:layout_constraintBottom_toBottomOf="@+id/textView2"
-                    app:layout_constraintEnd_toStartOf="@+id/constraintLayout2"
-                    app:layout_constraintTop_toTopOf="@+id/textView2" />
-
-                <TextView
-                    android:id="@+id/textView2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="40dp"
-                    android:layout_marginTop="30dp"
-                    android:text="데이터 결과"
-                    android:textColor="@color/black"
-                    android:textSize="24dp"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-
-                <FrameLayout
-                    android:id="@+id/FrameLayout"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginEnd="20dp"
+                    android:layout_marginEnd="30dp"
                     android:background="@drawable/bckgnd_rectangle_12"
-                    app:layout_constraintBottom_toBottomOf="@+id/textView2"
+                    app:layout_constraintBottom_toBottomOf="@+id/constraintLayout2"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="@+id/textView2"
-                    app:layout_constraintWidth_percent="0.33">
+                    app:layout_constraintTop_toTopOf="@+id/constraintLayout2">
 
-                    <com.google.android.material.button.MaterialButtonToggleGroup
-                        android:id="@+id/btnToggleGroup"
+                    <LinearLayout
+                        android:id="@+id/linearLayout2"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@drawable/bckgnd_rectangle_20"
-                        android:backgroundTint="@color/white"
-                        android:padding="6dp"
-                        app:singleSelection="true">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn1"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:backgroundTint="@color/transparent"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:textSize="18dp"
-                            android:visibility="visible"
-                            app:cornerRadius="8dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn2"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:textSize="18dp"
-                            app:backgroundTint="@color/transparent"
-                            app:cornerRadius="8dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn3"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:textSize="18dp"
-                            app:backgroundTint="@color/transparent"
-                            app:cornerRadius="8dp" />
-
-                    </com.google.android.material.button.MaterialButtonToggleGroup>
-
-                    <View
-                        android:id="@+id/toggleIndicator"
-                        android:layout_width="wrap_content"
-                        android:layout_height="64dp"
-                        android:layout_gravity="center_vertical"
-                        android:layout_marginStart="10dp"
-                        android:layout_marginEnd="10dp"
+                        android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:background="@drawable/bckgnd_rectangle_12"
-                        android:backgroundTint="@color/subColor100" />
+                        android:orientation="horizontal"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent">
 
-                </FrameLayout>
+                        <TextView
+                            android:id="@+id/tvID1"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/effect_transparent"
+                            android:gravity="center"
+                            android:paddingStart="30dp"
+                            android:paddingTop="6dp"
+                            android:paddingEnd="30dp"
+                            android:paddingBottom="6dp"
+                            android:text="안정"
+                            android:textColor="@color/black"
+                            android:textSize="18dp" />
 
-                <TextView
-                    android:id="@+id/tvbtn1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="정면, 교합"
-                    android:textColor="@color/subColor800"
-                    android:textSize="18dp"
-                    app:layout_constraintBottom_toBottomOf="@id/FrameLayout"
-                    app:layout_constraintEnd_toEndOf="@id/FrameLayout"
-                    app:layout_constraintHorizontal_bias="0.1"
-                    app:layout_constraintStart_toStartOf="@id/FrameLayout"
-                    app:layout_constraintTop_toTopOf="@+id/FrameLayout" />
+                        <TextView
+                            android:id="@+id/tvID2"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/effect_transparent"
+                            android:gravity="center"
+                            android:paddingStart="30dp"
+                            android:paddingTop="6dp"
+                            android:paddingEnd="30dp"
+                            android:paddingBottom="6dp"
+                            android:text="교합"
+                            android:textColor="@color/black"
+                            android:textSize="18dp" />
 
-                <TextView
-                    android:id="@+id/tvbtn2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="턱 좌우 이동"
-                    android:textColor="@color/subColor800"
-                    android:textSize="18dp"
-                    app:layout_constraintBottom_toBottomOf="@id/FrameLayout"
-                    app:layout_constraintEnd_toEndOf="@+id/FrameLayout"
-                    app:layout_constraintStart_toStartOf="@id/FrameLayout"
-                    app:layout_constraintTop_toTopOf="@+id/FrameLayout" />
+                        <TextView
+                            android:id="@+id/tvID3"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/effect_transparent"
+                            android:gravity="center"
+                            android:paddingStart="30dp"
+                            android:paddingTop="6dp"
+                            android:paddingEnd="30dp"
+                            android:paddingBottom="6dp"
+                            android:text="턱 좌측 이동"
+                            android:textColor="@color/black"
+                            android:textSize="18dp" />
+                    </LinearLayout>
 
-                <TextView
-                    android:id="@+id/tvbtn3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="입 벌림, 목폄"
-                    android:textColor="@color/subColor800"
-                    android:textSize="18dp"
-                    app:layout_constraintBottom_toBottomOf="@id/FrameLayout"
-                    app:layout_constraintEnd_toEndOf="@+id/FrameLayout"
-                    app:layout_constraintHorizontal_bias="0.9"
-                    app:layout_constraintStart_toStartOf="@id/FrameLayout"
-                    app:layout_constraintTop_toTopOf="@+id/FrameLayout" />
+                    <com.google.android.material.divider.MaterialDivider
+                        android:id="@+id/divIDHorizon"
+                        android:layout_width="0dp"
+                        android:layout_height="2dp"
+                        app:dividerColor="@color/subColor100"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/linearLayout2" />
+
+                    <com.google.android.material.divider.MaterialDivider
+                        android:id="@+id/materialDivider3"
+                        android:layout_width="2dp"
+                        android:layout_height="0dp"
+                        app:dividerColor="@color/subColor100"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintHorizontal_bias="0.33333333333333"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <com.google.android.material.divider.MaterialDivider
+                        android:id="@+id/materialDivider4"
+                        android:layout_width="2dp"
+                        android:layout_height="0dp"
+                        app:dividerColor="@color/subColor100"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintHorizontal_bias="0.66666666666"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <LinearLayout
+                        android:id="@+id/llIDBottom"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:visibility="visible"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/linearLayout2">
+
+                        <TextView
+                            android:id="@+id/tvID4"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/effect_transparent"
+                            android:gravity="center"
+                            android:paddingStart="30dp"
+                            android:paddingTop="6dp"
+                            android:paddingEnd="30dp"
+                            android:paddingBottom="6dp"
+                            android:text="턱 우측 이동"
+                            android:textColor="@color/black"
+                            android:textSize="18dp" />
+
+                        <TextView
+                            android:id="@+id/tvID5"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/effect_transparent"
+                            android:gravity="center"
+                            android:paddingStart="30dp"
+                            android:paddingTop="6dp"
+                            android:paddingEnd="30dp"
+                            android:paddingBottom="6dp"
+                            android:text="입 벌림"
+                            android:textColor="@color/black"
+                            android:textSize="18dp" />
+
+                        <TextView
+                            android:id="@+id/tvID6"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/effect_transparent"
+                            android:gravity="center"
+                            android:paddingStart="30dp"
+                            android:paddingTop="6dp"
+                            android:paddingEnd="30dp"
+                            android:paddingBottom="6dp"
+                            android:text="목 폄"
+                            android:textColor="@color/black"
+                            android:textSize="18dp" />
+
+                    </LinearLayout>
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:id="@+id/constraintLayout2"
                     android:layout_width="wrap_content"
-                    android:layout_height="0dp"
-                    android:layout_marginEnd="40dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="40dp"
+                    android:layout_marginTop="30dp"
                     android:background="@drawable/bckgnd_rectangle_12"
-                    app:layout_constraintBottom_toBottomOf="@+id/imageView"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="@+id/imageView">
+                    android:padding="10dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <TextView
+                        android:id="@+id/tvIdInfo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="10dp"
+                        android:text="이강휘, 010-4544-9999"
+                        android:textColor="@color/black"
+                        android:textSize="20dp"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/msGD"
                         android:layout_width="wrap_content"
-                        android:layout_height="0dp"
-                        android:layout_marginStart="20dp"
-                        android:layout_marginEnd="20dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:padding="10dp"
                         android:text="전체 각도 보기"
                         android:textColor="@color/black"
                         android:textSize="18dp"
-                        app:layout_constraintBottom_toBottomOf="parent"
+                        style="@style/CustomSwitchStyle"
+                        app:layout_constraintBottom_toBottomOf="@+id/tvIdInfo"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintStart_toEndOf="@+id/tvIdInfo"
+                        app:layout_constraintTop_toTopOf="@+id/tvIdInfo"
                         app:trackDecorationTint="@color/tint_black_100"
                         app:trackTint="@color/tint_black_100"
                         app:useMaterialThemeColors="false" />
@@ -193,11 +231,11 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="30dp"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="20dp"
                     android:layout_marginEnd="30dp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/imageView" />
+                    app:layout_constraintTop_toBottomOf="@+id/constraintLayout2" />
 
                 <TextView
                     android:id="@+id/tvGDRatioTitle"
@@ -300,7 +338,7 @@
         <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
             android:id="@+id/ssiv1"
             android:layout_width="0dp"
-            android:layout_height="100dp"
+            android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
@@ -312,7 +350,7 @@
         <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
             android:id="@+id/ssiv2"
             android:layout_width="0dp"
-            android:layout_height="100dp"
+            android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="1.0"
@@ -327,7 +365,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="40dp"
             android:layout_marginTop="20dp"
-            android:background="@drawable/effect_ibtn_20"
+            android:background="@drawable/effect_20"
             android:backgroundTint="#00F6F6F6"
             android:padding="4dp"
             android:src="@drawable/arrow_left"

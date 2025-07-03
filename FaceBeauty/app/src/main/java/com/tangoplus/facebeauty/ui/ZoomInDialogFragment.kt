@@ -11,14 +11,15 @@ import androidx.lifecycle.lifecycleScope
 import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.databinding.FragmentZoomInDialogBinding
 import com.tangoplus.facebeauty.util.BitmapUtility.setImage
-import com.tangoplus.facebeauty.vm.GalleryViewModel
+import com.tangoplus.facebeauty.vm.InformationViewModel
+import com.tangoplus.facebeauty.vm.MainViewModel
 import com.tangoplus.facebeauty.vm.MeasureViewModel
 import kotlinx.coroutines.launch
 
 class ZoomInDialogFragment : DialogFragment() {
     private lateinit var binding: FragmentZoomInDialogBinding
-    private val mvm : MeasureViewModel by activityViewModels()
-    private val gvm : GalleryViewModel by activityViewModels()
+    private val ivm : InformationViewModel by activityViewModels()
+    private val mvm : MainViewModel by activityViewModels()
 
     companion object {
     private const val ARG_SEQ = "arguement_sequence"
@@ -49,7 +50,7 @@ class ZoomInDialogFragment : DialogFragment() {
         val seq = arguments?.getInt(ARG_SEQ) ?: 0
 
         lifecycleScope.launch {
-            gvm.currentResult.value?.let { setImage(this@ZoomInDialogFragment, it, seq, binding.ssivZID, gvm, true) }
+            mvm.currentResult.value?.let { setImage(this@ZoomInDialogFragment, it, seq, binding.ssivZID, ivm, true) }
         }
     }
 }

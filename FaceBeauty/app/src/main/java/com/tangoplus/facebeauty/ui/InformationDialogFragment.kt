@@ -1,8 +1,5 @@
 package com.tangoplus.facebeauty.ui
 
-import android.animation.Animator
-import android.animation.ValueAnimator
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.icu.text.DecimalFormat
 import android.os.Bundle
@@ -10,7 +7,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toDrawable
@@ -24,25 +20,27 @@ import com.tangoplus.facebeauty.data.DrawRatioLine
 import com.tangoplus.facebeauty.data.FaceComparisonItem
 import com.tangoplus.facebeauty.data.db.FaceStatic
 import com.tangoplus.facebeauty.databinding.FragmentInformationDialogBinding
+import com.tangoplus.facebeauty.ui.adapter.FaceStaticRVAdapter
 import com.tangoplus.facebeauty.ui.view.GridSpacingItemDecoration
-import com.tangoplus.facebeauty.ui.view.OnAdapterMoreClickListener
-import com.tangoplus.facebeauty.ui.view.OnFaceStaticCheckListener
+import com.tangoplus.facebeauty.ui.listener.OnAdapterMoreClickListener
+import com.tangoplus.facebeauty.ui.listener.OnFaceStaticCheckListener
 import com.tangoplus.facebeauty.util.BitmapUtility.extractFaceCoordinates
 import com.tangoplus.facebeauty.util.BitmapUtility.setImage
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
 import com.tangoplus.facebeauty.util.MathHelpers.calculateRatios
-import com.tangoplus.facebeauty.vm.GalleryViewModel
-import com.tangoplus.facebeauty.vm.InputViewModel
+import com.tangoplus.facebeauty.vm.InformationViewModel
+import com.tangoplus.facebeauty.vm.MainViewModel
 import com.tangoplus.facebeauty.vm.MeasureViewModel
 import kotlinx.coroutines.launch
 
 
-class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, OnAdapterMoreClickListener {
+class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
+    OnAdapterMoreClickListener {
     private lateinit var binding: FragmentInformationDialogBinding
-    private val mvm : MeasureViewModel by activityViewModels()
-    private val ivm : InputViewModel by activityViewModels()
-    private val gvm : GalleryViewModel by activityViewModels()
+//    private val mvm : MeasureViewModel by activityViewModels()
+    private val ivm : InformationViewModel by activityViewModels()
+    private val mvm : MainViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -65,77 +63,11 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
             dismiss()
         }
         showDetailResult()
+        setDetailButtons()
+        setUserInfo()
 
-        // ------# 하단 버튼토글 그룹 시작 #------
-        binding.btnToggleGroup.check(R.id.btn1)
-        binding.btnToggleGroup.addOnButtonCheckedListener{ _, checkedId, isChecked ->
-            if (isChecked) {
-                when (checkedId) {
-                    R.id.btn1 -> {
-                        animateIndicator(true)
-                        gvm.setBtnIndex(0)
-                    }
-                    R.id.btn2 -> {
-                        animateIndicator(false)
-                        gvm.setBtnIndex(1)
-                    }
-                    R.id.btn3 -> {
-                        animateIndicator(false)
-                        gvm.setBtnIndex(2)
-                    }
-                }
-            }
-            setImage()
-        }
-        binding.btn1.setOnSingleClickListener { binding.btnToggleGroup.check(R.id.btn1) }
-        binding.btn2.setOnSingleClickListener { binding.btnToggleGroup.check(R.id.btn2) }
-        binding.btn3.setOnSingleClickListener { binding.btnToggleGroup.check(R.id.btn3) }
-        binding.btnToggleGroup.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener{
-            override fun onGlobalLayout() {
-                initToggleIndicator()
-                binding.btnToggleGroup.viewTreeObserver.removeOnGlobalLayoutListener(this)
-            }
-        })
-        // ------# 하단 버튼토글 그룹 끝 #------
-    }
-    private fun initToggleIndicator() {
-        val buttonWidth = binding.btnToggleGroup.width / 3
-        val params = binding.toggleIndicator.layoutParams
-        params.width = buttonWidth - 40
-        params.height = binding.btnToggleGroup.height - 40
-        binding.toggleIndicator.layoutParams = params
-        binding.toggleIndicator.x = 24f
     }
 
-    private fun animateIndicator(toLeft: Boolean) {
-        val animator = ValueAnimator.ofFloat(
-            binding.toggleIndicator.x,
-            if (toLeft) 20f else (binding.btnToggleGroup.width - binding.toggleIndicator.width - 20f)
-        )
-
-        animator.addUpdateListener { animation ->
-            binding.toggleIndicator.x = animation.animatedValue as Float
-        }
-        animator.duration = 250
-        animator.start()
-
-        animator.addListener(object: Animator.AnimatorListener{
-            override fun onAnimationStart(animation: Animator) {}
-            override fun onAnimationEnd(animation: Animator) {
-                when (toLeft) {
-                    true -> setToggleText(R.color.subColor800, R.color.subColor300)
-                    false -> setToggleText(R.color.subColor300, R.color.subColor800)
-                }
-            }
-            override fun onAnimationCancel(animation: Animator) {}
-            override fun onAnimationRepeat(animation: Animator) {}
-        })
-    }
-    private fun setToggleText(color1: Int, color2: Int) {
-        binding.tvbtn1.setTextColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(), color1)))
-        binding.tvbtn2.setTextColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(), color2)))
-        binding.tvbtn3.setTextColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(), color2)))
-    }
     override fun onFaceStaticCheck(drawLineIndex: Int, isChecked: Boolean) {
         val selectedLine = when (drawLineIndex) {
             0 -> DrawLine.A_EYE
@@ -152,10 +84,10 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
             else -> DrawLine.A_EYE
         }
         when (isChecked) {
-            true -> gvm.currentCheckedLines.add(selectedLine)
-            false -> gvm.currentCheckedLines.remove(selectedLine)
+            true -> ivm.currentCheckedLines.add(selectedLine)
+            false -> ivm.currentCheckedLines.remove(selectedLine)
         }
-        Log.v("체크", "$drawLineIndex, $isChecked / $selectedLine ${gvm.currentCheckedLines}")
+        Log.v("체크", "$drawLineIndex, $isChecked / $selectedLine ${ivm.currentCheckedLines}")
         setImage()
     }
     override fun adapterMoreClicked(isExpanded: Boolean) {
@@ -171,7 +103,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
     private fun setRatioCheckSwitch() {
         val df = DecimalFormat("#.#")
         // 값 적기
-        val jsonData = gvm.currentResult.value?.results?.getJSONObject(0)
+        val jsonData = mvm.currentResult.value?.results?.getJSONObject(0)
         val coordinates = extractFaceCoordinates(jsonData)
         if (coordinates != null) {
             val vertiIndices = listOf(234, 33, 133, 362, 263, 356)
@@ -246,36 +178,36 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
     private fun setRatioLineInImage(isVerti: Boolean, switchedOn: Boolean) {
         when (switchedOn) {
             true -> {
-                if (isVerti) gvm.currentCheckedRatioLines.add(DrawRatioLine.A_VERTI)
-                else gvm.currentCheckedRatioLines.add(DrawRatioLine.A_HORIZON)
+                if (isVerti) ivm.currentCheckedRatioLines.add(DrawRatioLine.A_VERTI)
+                else ivm.currentCheckedRatioLines.add(DrawRatioLine.A_HORIZON)
             }
             false -> {
-                if (isVerti) gvm.currentCheckedRatioLines.remove(DrawRatioLine.A_VERTI)
-                else gvm.currentCheckedRatioLines.remove(DrawRatioLine.A_HORIZON)
+                if (isVerti) ivm.currentCheckedRatioLines.remove(DrawRatioLine.A_VERTI)
+                else ivm.currentCheckedRatioLines.remove(DrawRatioLine.A_HORIZON)
             }
         }
-        Log.v("비율이미지", "${gvm.currentCheckedRatioLines}")
+        Log.v("비율이미지", "${ivm.currentCheckedRatioLines}")
         setImage()
     }
     private fun showDetailResult() {
         binding.ssiv1.recycle()
         binding.ssiv2.recycle()
 
-        val faceStaticJson0 = gvm.currentResult.value?.results?.getJSONObject(0)?.getJSONObject("data")
+        val faceStaticJson0 = mvm.currentResult.value?.results?.getJSONObject(0)?.getJSONObject("data")
         val faceStatic0 = faceStaticJson0.toFaceStatic()
         Log.v("스태틱가져오기", "0: $faceStaticJson0")
-        val faceStaticJson1 = gvm.currentResult.value?.results?.getJSONObject(1)?.getJSONObject("data")
+        val faceStaticJson1 = mvm.currentResult.value?.results?.getJSONObject(1)?.getJSONObject("data")
         val faceStatic1 = faceStaticJson1.toFaceStatic()
         Log.v("스태틱가져오기", "1: $faceStaticJson1")
 
-        gvm.currentFaceComparision = buildFaceComparisonList(faceStatic0, faceStatic1).toMutableList()
-        gvm.currentFaceComparision.apply {
+        ivm.currentFaceComparision = buildFaceComparisonList(faceStatic0, faceStatic1).toMutableList()
+        ivm.currentFaceComparision.apply {
 //            add(0, FaceComparisonItem("", 0f, 0f, type = RVItemType.TITLE))
 //            add(0, FaceComparisonItem("", 0f, 0f, type = RVItemType.TITLE))
         }
-        Log.v("staticDatas", "${gvm.currentFaceComparision}")
+        Log.v("staticDatas", "${ivm.currentFaceComparision}")
 
-        val faceStaticAdapter = FaceStaticRVAdapter(gvm.currentFaceComparision)
+        val faceStaticAdapter = FaceStaticRVAdapter(ivm.currentFaceComparision)
 
         binding.msGD.setOnCheckedChangeListener { _, isChecked ->
             // 리스너 동작
@@ -339,21 +271,51 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
         )
     }
     private fun setImage() {
-        val leftSeq = if (gvm.getBtnIndex() == 0 ) 0 else 2
-        val rightSeq = if (gvm.getBtnIndex() == 0) 1 else 3
+        val leftSeq = if (mvm.comparisonDoubleItem == null) {
+            when (ivm.getSeqIndex()) {
+                0 -> 0
+                1 -> 2
+                else -> 4
+            }
+        } else {
+            ivm.getSeqIndex()
+        }
+        val rightSeq = if (mvm.comparisonDoubleItem == null) {
+            when (ivm.getSeqIndex()) {
+                0 -> 1
+                1 -> 3
+                else -> 5
+            }
+        } else {
+            ivm.getSeqIndex()
+        }
+
+
+
+//            when (gvm.isComparisonResult.value) { // TODO 여기서 비교 or 상세 별 왼쪾 오른쪽의 seq가져오기 비교를 담는 그릇이 있어야 이게 가능함
+//            true -> if (ivm.getSeqIndex() == 0 ) 0 else 2
+//            false -> if (ivm.getSeqIndex() == 0 ) 0 else 2
+//            null -> if (ivm.getSeqIndex() == 0 ) 0 else 2
+//        }
+//        val rightSeq = when (gvm.isComparisonResult.value) {
+//            true -> if (ivm.getSeqIndex() == 0 ) 0 else 2
+//            false -> if (ivm.getSeqIndex() == 0 ) 0 else 2
+//            null -> if (ivm.getSeqIndex() == 0 ) 0 else 2
+//        }
 
         lifecycleScope.launch {
-            Log.v("체크", "setImage: ${gvm.currentCheckedRatioLines}")
-            gvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, leftSeq, binding.ssiv1, gvm) }
-            gvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, rightSeq, binding.ssiv2, gvm) }
+//            Log.v("체크", "setImage: ${gvm.currentCheckedRatioLines}")
+            mvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, leftSeq, binding.ssiv1, ivm) }
+            mvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, rightSeq, binding.ssiv2, ivm) }
         }
     }
+
     private fun setLinesInImage(switchedOn: Boolean) {
         when (switchedOn) {
             true -> {
-                gvm.currentCheckedLines.add(DrawLine.A_EYE)
-                gvm.currentCheckedLines.add(DrawLine.A_EARFLAP)
-                gvm.currentCheckedLines.add(DrawLine.A_TIP_OF_LIPS)
+                ivm.currentCheckedLines.add(DrawLine.A_EYE)
+                ivm.currentCheckedLines.add(DrawLine.A_EARFLAP)
+                ivm.currentCheckedLines.add(DrawLine.A_TIP_OF_LIPS)
 //                gvm.currentCheckedLines.add(DrawLine.A_GLABELLA_NOSE)
 //                gvm.currentCheckedLines.add(DrawLine.A_NOSE_CHIN)
 //                gvm.currentCheckedLines.add(DrawLine.A_EARFLAP_NASAL_WING)
@@ -361,15 +323,15 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
 //                gvm.currentCheckedLines.add(DrawLine.D_TIP_OF_LIPS_CENTER_LIPS)
             }
             false -> {
-                gvm.currentCheckedLines.clear()
+                ivm.currentCheckedLines.clear()
             }
         }
         setImage()
     }
 
     private fun showZoomInDialogFragment() {
-        val leftSeq = if (gvm.getBtnIndex() == 0 ) 0 else 2
-        val rightSeq = if (gvm.getBtnIndex() == 0) 1 else 3
+        val leftSeq = if (ivm.getSeqIndex() == 0 ) 0 else 2
+        val rightSeq = if (ivm.getSeqIndex() == 0) 1 else 3
         binding.ssiv1.setOnLongClickListener {
             val zoomInDialog = ZoomInDialogFragment.newInstance(leftSeq)
             zoomInDialog.show(requireActivity().supportFragmentManager, "")
@@ -379,6 +341,69 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener, O
             val zoomInDialog = ZoomInDialogFragment.newInstance(rightSeq)
             zoomInDialog.show(requireActivity().supportFragmentManager, "")
             true
+        }
+    }
+    private fun setDetailButtons() {
+        binding.llIDBottom.visibility = View.GONE
+        binding.divIDHorizon.visibility = View.GONE
+
+        binding.tvID1.text = "정면, 교합"
+        binding.tvID2.text = "턱 좌우 이동"
+        binding.tvID3.text = "입 벌림, 목폄"
+
+        val btns = listOf(binding.tvID1, binding.tvID2, binding.tvID3)
+        btns.forEachIndexed { indexx, tv ->
+            // 초기 색상 설정
+            tv.setTextColor(ContextCompat.getColor(requireContext(),
+                    if (indexx == ivm.getSeqIndex()) R.color.black else R.color.subColor300
+                )
+            )
+
+            tv.setOnSingleClickListener {
+                ivm.setSeqIndex(indexx)
+                Log.v("클릭됨", "${tv.text}, ${ivm.getSeqIndex()}")
+
+                // 모든 버튼 텍스트 색상 갱신
+                btns.forEachIndexed { i, t ->
+                    t.setTextColor(ContextCompat.getColor(requireContext(),
+                            if (i == indexx) R.color.black else R.color.subColor300
+                        )
+                    )
+                }
+
+                setImage()
+            }
+        }
+    }
+    private fun setUserInfo() {
+        val name = mvm.currentResult.value?.userName ?: "GUEST"
+        val mobile = mvm.currentResult.value?.userMobile ?: ""
+        val transformMobile = if (mobile.length == 11 && mobile.startsWith("010")) {
+            "${mobile.substring(0, 3)}-${mobile.substring(3, 7)}-${mobile.substring(7)}"
+        } else {
+            ""
+        }
+        val info = "$name, $transformMobile"
+        binding.tvIdInfo.text = info
+    }
+
+    private fun setComparisonButtons() {
+        binding.llIDBottom.visibility = View.VISIBLE
+        binding.divIDHorizon.visibility = View.VISIBLE
+        val btns = listOf(binding.tvID1, binding.tvID2, binding.tvID3, binding.tvID4, binding.tvID5, binding.tvID6)
+        btns.forEachIndexed { indexx, tv ->
+            tv.setOnSingleClickListener {
+                ivm.setSeqIndex(indexx)
+//                tv.backgroundTintList = ColorStateList.valueOf(
+//                    ContextCompat.getColor(requireContext(),
+//                        if (indexx == ivm.currentSeqIndex.value) R.color.black else R.color.white))
+                tv.setTextColor(ContextCompat.getColor(requireContext(),
+                    if (indexx == ivm.getSeqIndex())
+                        R.color.black else R.color.subColor300))
+
+                setImage()
+                // TODO 사진 변경
+            }
         }
     }
 

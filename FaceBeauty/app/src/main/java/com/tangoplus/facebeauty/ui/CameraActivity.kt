@@ -92,7 +92,6 @@ import com.tangoplus.facebeauty.util.MathHelpers.correctingValue
 import com.tangoplus.facebeauty.util.MathHelpers.getRealDistanceY
 import com.tangoplus.facebeauty.util.PreferenceUtility
 import com.tangoplus.facebeauty.vision.pose.PoseLandmarkerHelper
-import com.tangoplus.facebeauty.vm.GalleryViewModel
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.math.abs
@@ -135,7 +134,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     var latestResult: FaceLandmarkerHelper.ResultBundle? = null
     private val mvm : MeasureViewModel by viewModels()
     private val ivm : InputViewModel by viewModels()
-    private val gvm : GalleryViewModel by viewModels()
+
     private var seqStep = MutableLiveData(0)
     private val maxSeq = 6
 
@@ -247,7 +246,9 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         super.onStart()
 
         // 1. 백그라운드 executor 다시 생성
-        backgroundExecutor = Executors.newSingleThreadExecutor()
+        if (backgroundExecutor.isShutdown) {
+            backgroundExecutor = Executors.newSingleThreadExecutor()
+        }
 
         // 2. 얼굴 랜드마커 다시 생성
         backgroundExecutor.execute {
@@ -359,7 +360,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     results = mvm.mergedJA
                 )
                 Log.v("mvm.mergedJson", "${finishedResult.results.getJSONObject(0).getJSONObject("data")}")
-                gvm.currentResult.value = finishedResult
+                viewModel.currentResult.value = finishedResult
                 lifecycleScope.launch(Dispatchers.IO) {
                     val fd = FaceDatabase.getDatabase(this@CameraActivity)
                     fDao = fd.faceDao()
@@ -383,9 +384,12 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     finishedResult.regDate = static0.reg_date
 
                     withContext(Dispatchers.Main) {
-                        gvm.isShowResult.value = true
-                        val galleryDialog = GalleryDialogFragment()
-                        galleryDialog.show(supportFragmentManager, "")
+                        viewModel.comparisonDoubleItem = null
+                        val intent = Intent(this@CameraActivity, MainActivity::class.java)
+                        intent.putExtra("isMeasureFinish", true)
+                        startActivity(intent)
+                        finishAffinity()
+
                     }
                 }
             } else {
@@ -396,8 +400,9 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
         }
         binding.tvGoGallery.setOnSingleClickListener {
-            val galleryDialog = GalleryDialogFragment()
-            galleryDialog.show(supportFragmentManager, "")
+            val intent = Intent(this@CameraActivity, MainActivity::class.java)
+            startActivity(intent)
+            finishAffinity()
         }
 
 
@@ -1274,7 +1279,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         ivm.nameValue.value = ""
         ivm.mobileValue.value = ""
         ivm.isShownBtn = false
-        gvm.isShowResult.value = false
+        viewModel.comparisonDoubleItem = null
         val inputDialog = TextInputDialogFragment()
         inputDialog.show(supportFragmentManager, "")
         seqStep.value = 0

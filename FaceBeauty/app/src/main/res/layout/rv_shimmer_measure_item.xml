@@ -8,11 +8,13 @@
     android:layout_marginTop="5dp"
     android:layout_marginEnd="5dp"
     android:layout_marginBottom="5dp"
-    android:background="@drawable/effect_ibtn_20">
+    android:background="@drawable/effect_20"
+    android:backgroundTint="@color/subColor100">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/subColor100"
         android:orientation="horizontal">
 
         <View
@@ -21,7 +23,7 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="7.5dp"
             android:layout_weight="1"
-            android:background="@drawable/effect_ibtn_20"
+            android:background="@drawable/effect_20"
             android:backgroundTint="@color/subColor200" />
 
         <View
@@ -30,7 +32,15 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="7.5dp"
             android:layout_weight="1"
-            android:background="@drawable/effect_ibtn_20"
+            android:background="@drawable/effect_20"
+            android:backgroundTint="@color/subColor200" />
+        <View
+            android:id="@+id/view3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="7.5dp"
+            android:layout_weight="1"
+            android:background="@drawable/effect_20"
             android:backgroundTint="@color/subColor200" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,4 +1,4 @@
-package com.tangoplus.facebeauty.ui
+package com.tangoplus.facebeauty.ui.adapter
 
 import android.graphics.Typeface
 import android.util.Log
@@ -14,8 +14,8 @@ import com.tangoplus.facebeauty.data.FaceComparisonItem
 import com.tangoplus.facebeauty.data.RVItemType
 
 import com.tangoplus.facebeauty.databinding.RvFaceStaticItemBinding
-import com.tangoplus.facebeauty.ui.view.OnAdapterMoreClickListener
-import com.tangoplus.facebeauty.ui.view.OnFaceStaticCheckListener
+import com.tangoplus.facebeauty.ui.listener.OnAdapterMoreClickListener
+import com.tangoplus.facebeauty.ui.listener.OnFaceStaticCheckListener
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import java.text.DecimalFormat
 import kotlin.math.abs

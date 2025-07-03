@@ -35,6 +35,11 @@
         <item name="buttonBarNegativeButtonStyle">@style/Widget.App.Button</item>
     </style>
 
+    <style name="CustomSwitchStyle" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="trackTint">@color/switch_track_color</item>
+        <item name="trackDecorationTint">@color/switch_track_color</item>
+        <item name="thumbTint">@color/switch_thumb_color</item>
+    </style>
 
 
 </resources>

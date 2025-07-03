@@ -109,7 +109,7 @@
         android:layout_width="256dp"
         android:layout_height="84dp"
         android:layout_marginBottom="20dp"
-        android:background="@drawable/effect_ibtn_44"
+        android:background="@drawable/effect_44"
         android:backgroundTint="@color/black"
         android:text="촬영"
         android:textColor="@color/white"

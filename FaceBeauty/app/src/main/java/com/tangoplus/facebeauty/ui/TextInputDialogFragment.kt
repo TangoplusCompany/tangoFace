@@ -283,18 +283,17 @@ class TextInputDialogFragment : DialogFragment() {
                 ivm.isFinishInput = true
                 dismiss()
             }
-            setNeutralButton("기록으로 이동") { _, _ ->
-                ivm.nameValue.value = "GUEST"
-                ivm.mobileValue.value = (PreferenceUtility(requireContext()).getLastTempServerSn() + 1).toString() // 측정 결과 저장 전이니 일단 +1 한 temp_server_sn을 mobile로 uuid생성
-
-                val uuid = generateCustomUUID(ivm.nameValue.value, ivm.mobileValue.value, key)
-                Log.v("createdUUID", uuid)
-                mvm.currentUUID = uuid
-                dismiss()
-
-                val galleryDialog = GalleryDialogFragment()
-                galleryDialog.show(requireActivity().supportFragmentManager, "")
-            }
+//            setNeutralButton("기록으로 이동") { _, _ ->
+//                ivm.nameValue.value = "GUEST"
+//                ivm.mobileValue.value = (PreferenceUtility(requireContext()).getLastTempServerSn() + 1).toString() // 측정 결과 저장 전이니 일단 +1 한 temp_server_sn을 mobile로 uuid생성
+//
+//                val uuid = generateCustomUUID(ivm.nameValue.value, ivm.mobileValue.value, key)
+//                Log.v("createdUUID", uuid)
+//                mvm.currentUUID = uuid
+//                dismiss()
+//                val galleryDialog = GalleryDialogFragment()
+//                galleryDialog.show(requireActivity().supportFragmentManager, "")
+//            }
             setNegativeButton("아니오") { _, _ -> }
             show()
         }

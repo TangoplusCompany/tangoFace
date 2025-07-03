@@ -1,54 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.GalleryDialogFragment">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context=".ui.MainFragment">
 
     <androidx.core.widget.NestedScrollView
-        android:id="@+id/nsvGD"
+        android:id="@+id/nsvM"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true">
 
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/clGDList"
+            android:id="@+id/clMList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@color/subColor100"
             android:visibility="visible">
 
-            <ImageButton
-                android:id="@+id/ibtnGDBack"
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnMComparision"
                 android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="45dp"
+                android:layout_marginBottom="5dp"
+                android:background="@drawable/effect_44"
+                android:backgroundTint="@color/black"
+                android:paddingStart="40dp"
+                android:paddingEnd="40dp"
+                android:stateListAnimator="@null"
+                android:text="비교 하기"
+                android:textColor="@color/white"
+                android:textSize="18dp"
+                app:layout_constraintBottom_toBottomOf="@+id/clMComparision"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/clMComparision" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/clMComparision"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_marginStart="40dp"
+                android:layout_marginEnd="40dp"
+                android:background="@drawable/bckgnd_rectangle_12"
+                android:visibility="invisible"
+                app:layout_constraintBottom_toBottomOf="@+id/tvMMeasureCount"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/tvMMeasureCount"
+                app:layout_constraintTop_toTopOf="@+id/tvMMeasureCount">
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <TextView
+                android:id="@+id/tvMMeasureCount"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="40dp"
                 android:layout_marginTop="20dp"
-                android:background="@drawable/effect_ibtn_20"
-                android:backgroundTint="#00F6F6F6"
-                android:padding="4dp"
-                android:src="@drawable/arrow_left"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <TextView
-                android:id="@+id/tvGDMeasureCount"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="20dp"
-                android:layout_marginTop="20dp"
-                android:layout_marginEnd="40dp"
-                android:gravity="center_vertical"
+                android:gravity="center"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
                 android:text="총 기록 건수"
                 android:textColor="@color/black"
                 android:textSize="24dp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@+id/ibtnGDBack"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <com.facebook.shimmer.ShimmerFrameLayout
-                android:id="@+id/sflGD"
+                android:id="@+id/sflM"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="40dp"
@@ -57,7 +78,7 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tvGDMeasureCount"
+                app:layout_constraintTop_toBottomOf="@+id/tvMMeasureCount"
                 app:layout_constraintVertical_bias="0.0">
 
                 <LinearLayout
@@ -78,7 +99,7 @@
             </com.facebook.shimmer.ShimmerFrameLayout>
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvGD1"
+                android:id="@+id/rvM1"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="40dp"
@@ -86,8 +107,7 @@
                 android:layout_marginEnd="40dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/sflGD" />
+                app:layout_constraintTop_toBottomOf="@+id/sflM" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
-
 </FrameLayout>

@@ -26,7 +26,7 @@ import com.tangoplus.facebeauty.util.FileUtility.createMirroredOverlayImage
 import com.tangoplus.facebeauty.util.FileUtility.getPathFromContentUri
 import com.tangoplus.facebeauty.vision.pose.PoseLandmarkResult
 import com.tangoplus.facebeauty.vision.pose.PoseLandmarkResult.Companion.fromPoseCoordinates
-import com.tangoplus.facebeauty.vm.GalleryViewModel
+import com.tangoplus.facebeauty.vm.InformationViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -38,10 +38,11 @@ import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.sin
 
 object BitmapUtility {
-    suspend fun setImage(fragment: Fragment, faceResult: FaceResult, seq: Int, ssiv: SubsamplingScaleImageView, gvm: GalleryViewModel, isZoomIn: Boolean = false): Boolean = suspendCancellableCoroutine { continuation ->
+    suspend fun setImage(fragment: Fragment, faceResult: FaceResult, seq: Int, ssiv: SubsamplingScaleImageView, ivm: InformationViewModel, isZoomIn: Boolean = false): Boolean = suspendCancellableCoroutine { continuation ->
         try {
             val jsonData = faceResult.results.getJSONObject(seq)
             Log.v("제이슨0", "${faceResult.results}")
@@ -66,25 +67,43 @@ object BitmapUtility {
                             val faceLandmarkResult = fromFaceCoordinates(faceCoordinates)
                             val poseLandmarkResult = fromPoseCoordinates(poseCoordinates)
                             Log.v("jsonData", "${jsonData.getJSONObject("data")}")
-                            val cheekAngle = when (seq) {
-                                0 -> jsonData.getJSONObject("data").getDouble("resting_nose_chin_vertical_angle")
-                                else -> jsonData.getJSONObject("data").getDouble("occlusal_nose_chin_vertical_angle")
+                            val leftCheekValue = when (seq) {
+                                0 -> jsonData.getJSONObject("data").getDouble("resting_left_cheeks_extent")
+                                1 -> jsonData.getJSONObject("data").getDouble("occlusal_left_cheeks_extent")
+                                2 -> jsonData.getJSONObject("data").getDouble("jaw_left_tilt_left_mandibular_distance")
+                                3 -> jsonData.getJSONObject("data").getDouble("jaw_right_tilt_left_mandibular_distance")
+                                else -> 0.0
+                            }
+                            val rightCheekValue = when (seq) {
+                                0 -> jsonData.getJSONObject("data").getDouble("resting_right_cheeks_extent")
+                                1 -> jsonData.getJSONObject("data").getDouble("occlusal_right_cheeks_extent")
+                                2 -> jsonData.getJSONObject("data").getDouble("jaw_left_tilt_right_mandibular_distance")
+                                3 -> jsonData.getJSONObject("data").getDouble("jaw_right_tilt_right_mandibular_distance")
+                                else -> 0.0
+                            }
+                            val maxValue = max(leftCheekValue, rightCheekValue)
+                            val cheekDifferenceRatio = if (maxValue != 0.0) {
+                                abs(leftCheekValue - rightCheekValue) / maxValue
+                            } else {
+                                0.0 // 둘 다 0인 경우
+                            }.toFloat()
+                            val cheeksState = when {
+                                cheekDifferenceRatio > 0.2 && leftCheekValue > rightCheekValue -> -2
+                                cheekDifferenceRatio > 0.1 && leftCheekValue > rightCheekValue -> -1
+                                cheekDifferenceRatio > 0.2 && leftCheekValue < rightCheekValue -> 2
+                                cheekDifferenceRatio > 0.1 && leftCheekValue < rightCheekValue -> 1
+                                cheekDifferenceRatio <= 0.1 -> 0
+                                else -> 0
                             }
                             val combinedBitmap = combineImageAndOverlay(
                                 bitmap,
                                 faceLandmarkResult,
                                 poseLandmarkResult,
-                                gvm.currentCheckedLines,
-                                gvm.currentCheckedRatioLines,
-                                gvm.currentFaceComparision,
+                                ivm.currentCheckedLines,
+                                ivm.currentCheckedRatioLines,
+                                ivm.currentFaceComparision,
                                 seq,
-                                when {
-                                    cheekAngle > 92f -> 2
-                                    cheekAngle > 91f -> 1
-                                    cheekAngle < 88f -> -1
-                                    cheekAngle < 89f -> -2
-                                    else -> 0
-                                }
+                                cheeksState
                             )
 
                             isSet = true
@@ -292,7 +311,43 @@ object BitmapUtility {
         // 목젖
         val midShoulderX = (poseLandmarks.landmarks[11].x + poseLandmarks.landmarks[12].x ) / 2
         val midShoulderY = (poseLandmarks.landmarks[11].y + poseLandmarks.landmarks[12].y ) / 2
-        drawExtendedLine(canvas, midShoulderX, midShoulderY, midShoulderX, midShoulderY + 1, 50f, 50f, axis300Paint)
+        drawExtendedLine(canvas, midShoulderX, midShoulderY, midShoulderX, midShoulderY + 1, 500f, 500f, dashedPaint)
+
+//        val faceplr = listOf(7, 8, 0, 11, 12, )
+        val circlePaint1 = Paint().apply {
+            color = "#80F40000".toColorInt()
+            style = Paint.Style.FILL
+        }
+        val circlePaint2 = Paint().apply {
+            color = "#80FF4141".toColorInt()
+            style = Paint.Style.FILL
+        }
+        val circlePaint3 = Paint().apply {
+            color = "#80FF7979".toColorInt()
+            style = Paint.Style.FILL
+        }
+
+
+//        faceplr.forEach { indexx ->
+//            val plr =  poseLandmarks.landmarks[indexx]
+//
+//            canvas.drawCircle(plr.x, plr.y, 12f, circlePaint)
+//        }
+        val facePlr1 = listOf(132, 361)
+        val facePlr2 = listOf(93, 323)
+        val facePlr3 = listOf(454, 234)
+        facePlr1.forEach { indexx ->
+            val plr =  faceLandmarks.landmarks[indexx]
+            canvas.drawCircle(plr.x, plr.y, 12f, circlePaint1)
+        }
+        facePlr2.forEach { indexx ->
+            val plr =  faceLandmarks.landmarks[indexx]
+            canvas.drawCircle(plr.x, plr.y, 12f, circlePaint2)
+        }
+        facePlr3.forEach { indexx ->
+            val plr =  faceLandmarks.landmarks[indexx]
+            canvas.drawCircle(plr.x, plr.y, 12f, circlePaint3)
+        }
 
         // ----------------------------------# 비율 계산기 #------------------------------------
         if (selectedRatioLine.contains(DrawRatioLine.A_VERTI)) {

@@ -82,7 +82,7 @@
             android:id="@+id/btnTIDSave"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:background="@drawable/effect_ibtn"
+            android:background="@drawable/effect_0"
             android:backgroundTint="@color/black"
             android:padding="16dp"
             android:text="저장"
