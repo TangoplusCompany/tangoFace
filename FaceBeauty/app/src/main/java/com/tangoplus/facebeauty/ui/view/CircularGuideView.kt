@@ -85,17 +85,17 @@ class CircularGuideView @JvmOverloads constructor(
 
     private val linePaint = Paint().apply {
         color = Color.LTGRAY
-        strokeWidth = dpToPx(2f)
+        strokeWidth = dpToPx(2.5f)
         isAntiAlias = true
     }
 
     // 성공 상태용 페인트
     private val successPaint = Paint().apply {
-        strokeWidth = dpToPx(2f)
+        strokeWidth = dpToPx(2.5f)
         isAntiAlias = true
     }
 
-    private val numLines = 120
+    private val numLines = 180
     private val lineLength = dpToPx(20f)
 
     private var progressAngle = 0f // 0~360도

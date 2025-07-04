@@ -5,7 +5,7 @@
     android:id="@+id/clFSEI"
     android:layout_width="match_parent"
     android:layout_height="64dp"
-    android:background="@drawable/bckgnd_rectangle_20"
+    android:background="@drawable/bckgnd_20"
     android:backgroundTint="#00FFFFFF">
 
 

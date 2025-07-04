@@ -62,8 +62,14 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         binding.ibtnIDBack.setOnSingleClickListener {
             dismiss()
         }
-        showDetailResult()
-        setDetailButtons()
+
+        // double확인해서 비교인지 상세보기인지 판단
+        if (mvm.comparisonDoubleItem != null) {
+            setComparisonButtons()
+        } else {
+            setDetailButtons()
+        }
+        setResult()
         setUserInfo()
 
     }
@@ -189,26 +195,30 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         Log.v("비율이미지", "${ivm.currentCheckedRatioLines}")
         setImage()
     }
-    private fun showDetailResult() {
+    private fun setResult() {
         binding.ssiv1.recycle()
         binding.ssiv2.recycle()
 
-        val faceStaticJson0 = mvm.currentResult.value?.results?.getJSONObject(0)?.getJSONObject("data")
-        val faceStatic0 = faceStaticJson0.toFaceStatic()
-        Log.v("스태틱가져오기", "0: $faceStaticJson0")
-        val faceStaticJson1 = mvm.currentResult.value?.results?.getJSONObject(1)?.getJSONObject("data")
-        val faceStatic1 = faceStaticJson1.toFaceStatic()
-        Log.v("스태틱가져오기", "1: $faceStaticJson1")
+        // 비교인지 확인 TODO 여기서 데이터 확인한 후 보내야 함 3분할일지?
+        if (mvm.comparisonDoubleItem != null) {
 
-        ivm.currentFaceComparision = buildFaceComparisonList(faceStatic0, faceStatic1).toMutableList()
-        ivm.currentFaceComparision.apply {
+        } else {
+            val faceStaticJson0 = mvm.currentResult.value?.results?.getJSONObject(0)?.getJSONObject("data")
+            val faceStatic0 = faceStaticJson0.toFaceStatic()
+            Log.v("스태틱가져오기", "0: $faceStaticJson0")
+            val faceStaticJson1 = mvm.currentResult.value?.results?.getJSONObject(1)?.getJSONObject("data")
+            val faceStatic1 = faceStaticJson1.toFaceStatic()
+            Log.v("스태틱가져오기", "1: $faceStaticJson1")
+
+            ivm.currentFaceComparision = buildFaceComparisonList(faceStatic0, faceStatic1).toMutableList()
+            ivm.currentFaceComparision.apply {
 //            add(0, FaceComparisonItem("", 0f, 0f, type = RVItemType.TITLE))
 //            add(0, FaceComparisonItem("", 0f, 0f, type = RVItemType.TITLE))
+            }
         }
         Log.v("staticDatas", "${ivm.currentFaceComparision}")
 
         val faceStaticAdapter = FaceStaticRVAdapter(ivm.currentFaceComparision)
-
         binding.msGD.setOnCheckedChangeListener { _, isChecked ->
             // 리스너 동작
             setLinesInImage(isChecked)
@@ -271,43 +281,34 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         )
     }
     private fun setImage() {
-        val leftSeq = if (mvm.comparisonDoubleItem == null) {
-            when (ivm.getSeqIndex()) {
-                0 -> 0
-                1 -> 2
-                else -> 4
+        val seqIndex = ivm.getSeqIndex()
+        val isDoubleMode = mvm.comparisonDoubleItem != null
+
+        val (leftSeq, rightSeq) = if (!isDoubleMode) {
+            when (seqIndex) {
+                0 -> 0 to 1
+                1 -> 2 to 3
+                else -> 4 to 5
             }
         } else {
-            ivm.getSeqIndex()
+            seqIndex to seqIndex
         }
-        val rightSeq = if (mvm.comparisonDoubleItem == null) {
-            when (ivm.getSeqIndex()) {
-                0 -> 1
-                1 -> 3
-                else -> 5
-            }
-        } else {
-            ivm.getSeqIndex()
-        }
-
-
-
-//            when (gvm.isComparisonResult.value) { // TODO 여기서 비교 or 상세 별 왼쪾 오른쪽의 seq가져오기 비교를 담는 그릇이 있어야 이게 가능함
-//            true -> if (ivm.getSeqIndex() == 0 ) 0 else 2
-//            false -> if (ivm.getSeqIndex() == 0 ) 0 else 2
-//            null -> if (ivm.getSeqIndex() == 0 ) 0 else 2
-//        }
-//        val rightSeq = when (gvm.isComparisonResult.value) {
-//            true -> if (ivm.getSeqIndex() == 0 ) 0 else 2
-//            false -> if (ivm.getSeqIndex() == 0 ) 0 else 2
-//            null -> if (ivm.getSeqIndex() == 0 ) 0 else 2
-//        }
 
         lifecycleScope.launch {
-//            Log.v("체크", "setImage: ${gvm.currentCheckedRatioLines}")
-            mvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, leftSeq, binding.ssiv1, ivm) }
-            mvm.currentResult.value?.let { setImage(this@InformationDialogFragment, it, rightSeq, binding.ssiv2, ivm) }
+            if (isDoubleMode) {
+                mvm.comparisonDoubleItem?.let { (left, right) ->
+                    setImage(this@InformationDialogFragment, left, leftSeq, binding.ssiv1, ivm)
+                    setImage(this@InformationDialogFragment, right, rightSeq, binding.ssiv2, ivm)
+                }
+            } else {
+                mvm.currentResult.value?.let { result ->
+                    // value가 한 번만 호출되고 재사용됨
+                    setImage(this@InformationDialogFragment, result, leftSeq, binding.ssiv1, ivm)
+                    setImage(this@InformationDialogFragment, result, rightSeq, binding.ssiv2, ivm)
+                }
+            }
         }
+
     }
 
     private fun setLinesInImage(switchedOn: Boolean) {
@@ -343,6 +344,31 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
             true
         }
     }
+    private fun setComparisonButtons() {
+        binding.llIDBottom.visibility = View.VISIBLE
+        binding.divIDHorizon.visibility = View.VISIBLE
+        val btns = listOf(binding.tvID1, binding.tvID2, binding.tvID3, binding.tvID4, binding.tvID5, binding.tvID6)
+        btns.forEachIndexed { indexx, tv ->
+            // 초기 색상 설정
+            tv.setTextColor(ContextCompat.getColor(requireContext(),
+                if (indexx == ivm.getSeqIndex()) R.color.black else R.color.subColor300
+            ))
+
+            tv.setOnSingleClickListener {
+                ivm.setSeqIndex(indexx)
+                Log.v("클릭됨", "${tv.text}, ${ivm.getSeqIndex()}")
+
+                // 모든 버튼 텍스트 색상 갱신
+                btns.forEachIndexed { i, t ->
+                    t.setTextColor(ContextCompat.getColor(requireContext(),
+                        if (i == indexx) R.color.black else R.color.subColor300
+                    ))
+                }
+                setImage()
+            }
+        }
+    }
+
     private fun setDetailButtons() {
         binding.llIDBottom.visibility = View.GONE
         binding.divIDHorizon.visibility = View.GONE
@@ -387,24 +413,5 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         binding.tvIdInfo.text = info
     }
 
-    private fun setComparisonButtons() {
-        binding.llIDBottom.visibility = View.VISIBLE
-        binding.divIDHorizon.visibility = View.VISIBLE
-        val btns = listOf(binding.tvID1, binding.tvID2, binding.tvID3, binding.tvID4, binding.tvID5, binding.tvID6)
-        btns.forEachIndexed { indexx, tv ->
-            tv.setOnSingleClickListener {
-                ivm.setSeqIndex(indexx)
-//                tv.backgroundTintList = ColorStateList.valueOf(
-//                    ContextCompat.getColor(requireContext(),
-//                        if (indexx == ivm.currentSeqIndex.value) R.color.black else R.color.white))
-                tv.setTextColor(ContextCompat.getColor(requireContext(),
-                    if (indexx == ivm.getSeqIndex())
-                        R.color.black else R.color.subColor300))
-
-                setImage()
-                // TODO 사진 변경
-            }
-        }
-    }
 
 }

@@ -1,15 +1,23 @@
 package com.tangoplus.facebeauty.ui
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.skydoves.balloon.ArrowPositionRules
 import com.skydoves.balloon.Balloon
 import com.skydoves.balloon.BalloonAnimation
@@ -21,6 +29,7 @@ import com.tangoplus.facebeauty.data.db.FaceDao
 import com.tangoplus.facebeauty.data.db.FaceDatabase
 import com.tangoplus.facebeauty.data.db.FaceStatic
 import com.tangoplus.facebeauty.databinding.FragmentMainBinding
+import com.tangoplus.facebeauty.ui.AnimationUtility.animateExpand
 import com.tangoplus.facebeauty.ui.adapter.MeasureRVAdapter
 import com.tangoplus.facebeauty.ui.view.GridSpacingItemDecoration
 import com.tangoplus.facebeauty.ui.listener.OnMeasureClickListener
@@ -30,12 +39,12 @@ import com.tangoplus.facebeauty.util.FileUtility.readJsonFromUri
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.vm.InputViewModel
 import com.tangoplus.facebeauty.vm.MainViewModel
-import com.tangoplus.facebeauty.vm.MeasureViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import androidx.core.view.isVisible
 
 
 class MainFragment : Fragment(), OnMeasureClickListener {
@@ -66,24 +75,44 @@ class MainFragment : Fragment(), OnMeasureClickListener {
 
         bd.clMList.visibility = View.VISIBLE
         initShimmer()
+        setSideBar()
         showListResult()
         setComparisonClick()
+        setObserveComparisonState()
+
     }
 
-    private fun setAdapter() {
+    private fun setAdapter(spanCount : Int) {
         bd.rvM1.apply {
-            while (itemDecorationCount > 0) {
-                removeItemDecorationAt(0)
-            }
+            // 페이드 아웃 애니메이션
+            animate()
+                .alpha(0f)
+                .setDuration(150)
+                .setListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        // 기존 decoration 제거
+                        while (itemDecorationCount > 0) {
+                            removeItemDecorationAt(0)
+                        }
 
-            val spacingPx = (5 * resources.displayMetrics.density).toInt() // 아이템 간 간격
-            addItemDecoration(GridSpacingItemDecoration(2, spacingPx, true))
-            val measureAdapter = MeasureRVAdapter(requireContext(), mvm.currentFaceResults, mvm)
-            measureAdapter.measureClickListener = this@MainFragment
-            // 40dp를 픽셀로 변환
-            layoutManager = GridLayoutManager(requireContext(), 3)
-            adapter = measureAdapter
-            Log.v("어댑터데이터", "${mvm.currentFaceResults}")
+                        val spacingPx = (5 * resources.displayMetrics.density).toInt() // 아이템 간 간격
+                        addItemDecoration(GridSpacingItemDecoration(spanCount, spacingPx, true))
+                        val measureAdapter = MeasureRVAdapter(requireContext(), mvm.currentFaceResults, mvm)
+
+                        measureAdapter.measureClickListener = this@MainFragment
+                        layoutManager = GridLayoutManager(requireContext(), spanCount)
+                        adapter = measureAdapter
+                        Log.v("어댑터데이터", "${mvm.currentFaceResults}")
+
+                        // 페이드 인 애니메이션
+                        animate()
+                            .alpha(1f)
+                            .setDuration(150)
+                            .setListener(null)
+                            .start()
+                    }
+                })
+                .start()
         }
     }
 
@@ -156,58 +185,59 @@ class MainFragment : Fragment(), OnMeasureClickListener {
             }
             mvm.currentFaceResults.sortByDescending { it.tempServerSn }
 
-            mvm.currentResult.value = mvm.currentFaceResults.firstOrNull()
-            if (mvm.isMeasureFinish) {
-                val infoDialog = InformationDialogFragment()
-                infoDialog.show(requireActivity().supportFragmentManager, "")
-            }
-            // TODO 잘 들어오는지 확인하기 
 //            Log.v("mediaJson파일이름", "sn: ${gvm.currentFaceResults.map { it.tempServerSn }} media: ${gvm.currentFaceResults.map { it.imageUris }}")
             withContext(Dispatchers.Main) {
+                if (mvm.isMeasureFinish) {
+                    mvm.currentResult.value = mvm.currentFaceResults.firstOrNull()
+                    val infoDialog = InformationDialogFragment()
+                    infoDialog.show(requireActivity().supportFragmentManager, "")
+                }
                 cancelShimmer()
                 val countText = "총 기록 건수: ${mvm.currentFaceResults.size}건"
                 bd.tvMMeasureCount.text = countText
-                setAdapter()
+                setAdapter(2)
             }
-
-
         }
     }
 
     private fun setComparisonClick() {
-        if (mvm.currentFaceResults.size < 2) {
-            bd.btnMComparision.isEnabled = false
-            val balloon = Balloon.Builder(requireContext())
-                .setWidth(BalloonSizeSpec.WRAP)
-                .setHeight(BalloonSizeSpec.WRAP)
-                .setText("측정을 더 시도해 비교해주세요")
-                .setTextColorResource(R.color.black)
-                .setTextSize(20f)
-                .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
-                .setArrowSize(0)
-                .setMargin(6)
-                .setPadding(12)
-                .setCornerRadius(8f)
-                .setBackgroundColorResource(R.color.white)
-                .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
-                .setLifecycleOwner(viewLifecycleOwner)
-                .setOnBalloonDismissListener {  }
-                .build()
-            bd.btnMComparision.showAlignBottom(balloon)
-            balloon.dismissWithDelay(3000L)
-            balloon.setOnBalloonClickListener { balloon.dismiss() }
-
-        } else {
-            bd.btnMComparision.isEnabled = true
-        }
         bd.btnMComparision.setOnSingleClickListener {
+            if (bd.btnMComparision.text == "취소") {
+                mvm.clearItems()
+                bd.btnMComparision.text = "비교 하기"
+                mvm.setComparisonState(true)
+            }
+            if (mvm.currentFaceResults.size < 2) {
+                val balloon = Balloon.Builder(requireContext())
+                    .setWidth(BalloonSizeSpec.WRAP)
+                    .setHeight(BalloonSizeSpec.WRAP)
+                    .setText("측정 기록이 최소 2개 이상 있어야 합니다 !\n하단의 버튼을 눌러 측정 해보세요")
+                    .setTextColorResource(R.color.black)
+                    .setTextSize(16f)
+                    .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
+                    .setArrowSize(0)
+                    .setMargin(16)
+                    .setPadding(12)
+                    .setCornerRadius(12f)
+                    .setBackgroundColorResource(R.color.white)
+                    .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
+                    .setLifecycleOwner(viewLifecycleOwner)
+                    .setOnBalloonDismissListener {  }
+                    .build()
+                bd.btnMComparision.showAlignBottom(balloon)
+                balloon.dismissWithDelay(3000L)
+                balloon.setOnBalloonClickListener { balloon.dismiss() }
+                return@setOnSingleClickListener
+            }
 
-            if (mvm.tempComparisonDoubleItem.value?.size == 2 && bd.btnMComparision.text == "결과 확인") {
-                val sortedTempItems = mvm.tempComparisonDoubleItem.value?.sortedByDescending { it.regDate }
-                mvm.comparisonDoubleItem = Pair(sortedTempItems?.get(1) , sortedTempItems?.get(0))
-
+            if (mvm.tempComparisonItems.value?.size == 2 && bd.btnMComparision.text == "결과 보기") {
+                val sortedTempItems = mvm.tempComparisonItems.value?.sortedByDescending { it.regDate }
+                mvm.comparisonDoubleItem = Pair(sortedTempItems?.get(0)!! , sortedTempItems[1])
                 val infoDialog = InformationDialogFragment()
                 infoDialog.show(requireActivity().supportFragmentManager, "")
+
+                // 비교해제하면서 전부 끄기
+                Handler(Looper.getMainLooper()).postDelayed({ mvm.setComparisonState(false) }, 250)
                 return@setOnSingleClickListener
             }
 
@@ -217,27 +247,112 @@ class MainFragment : Fragment(), OnMeasureClickListener {
                 mvm.setComparisonState(false)
 
             } else {
-                bd.btnMComparision.text = "결과 확인"
+                bd.btnMComparision.text = "취소"
 //                bd.btnMComparision.isEnabled = false
                 mvm.setComparisonState(true)
-            }
 
-            // 변경 시작 할 때 observe 설정
-            setObserveComparisonItems()
+                // 변경 시작 할 때 observe 설정
+                if (!mvm.tempComparisonItems.hasObservers()) {
+                    setObserveComparisonItems()
+                }
+            }
         }
+    }
+    private fun setObserveComparisonState() {
+        mvm.comparisonState.observe(viewLifecycleOwner) { isComparison ->
+            if (!isComparison) {
+                // 비교 모드가 false가 되면 초기화
+                mvm.clearItems()
+                bd.btnMComparision.text = "비교 하기"
+                resetAllRecyclerViewItems()
+            }
+        }
+
+    }
+
+    private fun resetAllRecyclerViewItems() {
+        val adapter = bd.rvM1.adapter as? MeasureRVAdapter
+        adapter?.resetAllItemsUI()
+    }
+
+
+    private fun setComparisonAdapter() {
+        if (mvm.tempComparisonItems.value != null) {
+            val adapter = MeasureRVAdapter(requireContext(), mvm.tempComparisonItems.value!!, mvm, 1)
+            val layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
+            bd.rvM2.layoutManager = layoutManager
+            bd.rvM2.adapter = adapter
+        }
+
     }
 
     private fun setObserveComparisonItems() {
-        mvm.tempComparisonDoubleItem.observe(viewLifecycleOwner) {
+        mvm.tempComparisonItems.observe(viewLifecycleOwner) {
+            setComparisonAdapter()
 
-            if (it.size < 2) {
-                bd.btnMComparision.isEnabled = false
+            if (it.size == 2) {
+                bd.btnMComparision.text = "결과 보기"
+                Log.v("버튼풀림0", "${it[0]}")
+                Log.v("버튼풀림1", "${it[1]}")
             } else {
-                bd.btnMComparision.isEnabled = true
+                bd.btnMComparision.text = "취소"
             }
         }
     }
 
+    private fun setSideBar() {
+        bd.ibtnMNavi.setOnSingleClickListener {
+            if (bd.clMNavi.isVisible) {
+                // 숨기기
+                animateExpand(requireContext(), bd.clMNavi, false) {
+                    bd.clMNavi.visibility = View.GONE
+                    setAdapter(3)
+                }
+            } else {
+                // 보이기
+                bd.clMNavi.visibility = View.VISIBLE
+                animateExpand(requireContext(), bd.clMNavi, true) {
+                    setAdapter(2)
+                }
+            }
+        }
+    }
+    fun analyzeString(input: String)  {
+
+    }
+    private fun setSearchInput() {
+        bd.etMSearch.addTextChangedListener(object: TextWatcher{
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                val afterText = s.toString()
+
+
+                var filteredResult = listOf<FaceResult>()
+                if (afterText.isNotEmpty()) {
+                    when {
+                        afterText.all { it.isDigit() } -> {
+                            val number = afterText.toIntOrNull()
+                            if (number != null) {
+                                filteredResult = mvm.currentFaceResults.filter { it.userMobile?.contains(afterText) == true }
+                            }
+                        }
+                        afterText.any { it.isLetter() } -> {
+                            val hasEnglish = afterText.any { it.isLetter() && it.code in 65..122 }
+                            val hasKorean = afterText.any { it.code in 0xAC00..0xD7A3 }
+                            if (hasEnglish || hasKorean) {
+                                filteredResult = mvm.currentFaceResults.filter { it.userName?.contains(afterText) == true }
+                            }
+                        }
+                    }
+                }
+                // TODO 어댑터에 들어갈 데이터 변경 후 새롭게 갱신되게끔 하기 + TODO 어댑터위에 텍스트 데코 레이션 넣기
+//                setAdapter(filteredResult, 2)
+
+                
+            }
+        })
+    }
 
     override fun onMeasureClick(tempServerSn: Int) {
         mvm.currentResult.value = mvm.currentFaceResults.find { it.tempServerSn == tempServerSn }
@@ -260,5 +375,4 @@ class MainFragment : Fragment(), OnMeasureClickListener {
             stopShimmer()
         }
     }
-
 }

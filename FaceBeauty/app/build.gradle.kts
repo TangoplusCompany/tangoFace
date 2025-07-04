@@ -38,19 +38,19 @@ android {
         enable = true
     }
 }
+
+
 //noinspection UseTomlInstead
 dependencies {
     implementation("com.davemorrissey.labs:subsampling-scale-image-view:3.10.0")
     implementation("com.github.skydoves:progressview:1.1.3")
 
-    implementation ("androidx.core:core-ktx:1.8.0")
+    //noinspection Aligned16KB
     implementation("com.google.mediapipe:tasks-vision:0.10.14")
+
     implementation("com.arthenica:ffmpeg-kit-full-gpl:6.0-2")
-    implementation("androidx.appcompat:appcompat:1.5.1")
-    implementation("com.google.android.material:material:1.7.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.fragment:fragment-ktx:1.5.4")
-    implementation("com.google.code.gson:gson:2.10.1")
+
+    implementation("com.google.code.gson:gson:2.11.0")
     implementation("com.facebook.shimmer:shimmer:0.5.0")
     implementation("com.github.skydoves:balloon:1.6.4")
     implementation("com.airbnb.android:lottie:6.4.0")
@@ -85,6 +85,12 @@ dependencies {
     //noinspection Aligned16KB
     implementation("net.zetetic:android-database-sqlcipher:4.5.4")
 
+    implementation ("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("androidx.fragment:fragment-ktx:1.8.8")
+    implementation("androidx.drawerlayout:drawerlayout:1.2.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

@@ -422,16 +422,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         binding.lavCamera.setAnimation("focusing_screen.json")
         binding.lavCamera.repeatCount = LottieDrawable.INFINITE
         binding.lavCamera.playAnimation()
-
-
-//        binding.clSeqGuide.setOnSingleClickListener {
-////            binding.clSeqGuide.clearAnimation()
-////            binding.clSeqGuide.animate().cancel()
-////            setAnimation(binding.tvSeqGuide, 500L, 0L, false) {
-////                binding.btnShooting.isEnabled = true
-////            }
-//
-//        }
     }
 
     private fun setUpCamera() {

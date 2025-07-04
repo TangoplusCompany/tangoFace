@@ -1,5 +1,6 @@
 package com.tangoplus.facebeauty.vm
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.tangoplus.facebeauty.data.FaceResult
@@ -85,17 +86,37 @@ class MainViewModel : ViewModel() {
     val currentFaceResults = mutableListOf<FaceResult>()
 
     // 비교일 경우
-    private var comparisonState = false
+    private var _comparisonState = MutableLiveData<Boolean>()
+    val comparisonState: LiveData<Boolean> = _comparisonState
 
-    fun setComparisonState(isComparison : Boolean) {
-        comparisonState = isComparison
-    }
-    fun getComparisonState() : Boolean {
-        return comparisonState
+    fun setComparisonState(isComparison: Boolean) {
+        _comparisonState.value = isComparison
     }
 
-    var comparisonDoubleItem : Pair<FaceResult?, FaceResult?>? = null
-    var tempComparisonDoubleItem = MutableLiveData(mutableListOf<FaceResult>())
+    fun getComparisonState(): Boolean {
+        return _comparisonState.value ?: false
+    }
+
+    var comparisonDoubleItem : Pair<FaceResult, FaceResult>? = null
+
+    private val _tempComparisonItems = MutableLiveData<MutableList<FaceResult>>(mutableListOf())
+    val tempComparisonItems : LiveData<MutableList<FaceResult>> = _tempComparisonItems
+    fun addItem(item: FaceResult) {
+        val currentList = _tempComparisonItems.value ?: mutableListOf()
+        currentList.add(item)
+        _tempComparisonItems.value = currentList.toMutableList()
+    }
+
+    fun removeItem(item: FaceResult) {
+        val currentList = _tempComparisonItems.value ?: mutableListOf()
+        currentList.remove(item)
+        _tempComparisonItems.value = currentList.toMutableList()
+    }
+    fun clearItems() {
+        val currentList = _tempComparisonItems.value ?: mutableListOf()
+        currentList.clear()
+        _tempComparisonItems.value = currentList.toMutableList()
+    }
     val currentResult = MutableLiveData<FaceResult>()
 
     var isMeasureFinish = false

@@ -4,13 +4,18 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.transition.AutoTransition
 import androidx.transition.ChangeBounds
+import androidx.transition.Transition
+import androidx.transition.TransitionListenerAdapter
 import androidx.transition.TransitionManager
 
 object AnimationUtility {
@@ -29,6 +34,27 @@ object AnimationUtility {
             animator.start()
         }, delay)
     }
+    private fun dpToPx(context: Context, dp: Int): Int {
+        return (dp * context.resources.displayMetrics.density).toInt()
+    }
+    fun animateExpand(context: Context, view: View, expand: Boolean, onEnd: () -> Unit) {
+        val newWidth = if (expand) dpToPx(context, 280) else 0
+        val anim = ValueAnimator.ofInt(view.width, newWidth)
+        anim.addUpdateListener {
+            val value = it.animatedValue as Int
+            view.layoutParams.width = value
+            view.requestLayout()
+        }
+        anim.duration = 150
+        anim.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                onEnd()
+            }
+        })
+        anim.start()
+    }
+
+
 
     fun startBouncingAnimation(bounceAnimator: AnimatorSet?, tv: View) {
         val bounceDistance = -10 * tv.resources.displayMetrics.density

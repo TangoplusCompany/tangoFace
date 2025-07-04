@@ -1,16 +1,158 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/clM"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".ui.MainFragment">
+    <!--tools:openDrawer="start"-->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/clMNavi"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@color/white"
+        android:paddingStart="15dp"
+        android:paddingEnd="15dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:id="@+id/linearLayout3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/msMFilter"
+                style="@style/CustomSwitchStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="15dp"
+                android:layout_marginEnd="15dp"
+                android:scaleX="1.5"
+                android:scaleY="1.5" />
+
+            <TextView
+                android:id="@+id/textView7"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="🙋 이용자별 정렬"
+                android:textColor="@color/black"
+                android:textSize="20dp"
+                app:layout_constraintBottom_toBottomOf="@+id/msMFilter"
+                app:layout_constraintStart_toEndOf="@+id/msMFilter"
+                app:layout_constraintTop_toTopOf="@+id/msMFilter" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvMMeasureCount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:gravity="center_vertical"
+            android:text="총 기록 건수: "
+            android:textColor="@color/subColor400"
+            android:textSize="16dp"
+            app:layout_constraintBottom_toBottomOf="@+id/textView8"
+            app:layout_constraintStart_toEndOf="@+id/textView8"
+            app:layout_constraintTop_toTopOf="@+id/textView8" />
+
+        <TextView
+            android:id="@+id/textView8"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="64dp"
+            android:text="기록 검색"
+            android:textColor="@color/black"
+            android:textSize="20dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/linearLayout3" />
+
+        <EditText
+            android:id="@+id/etMSearch"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="start"
+            android:inputType="text"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:singleLine="true"
+            android:textColor="@color/black"
+            android:textSize="18dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textView8" />
+
+        <TextView
+            android:id="@+id/textView5"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="64dp"
+            android:gravity="center"
+            android:text="비교"
+            android:textColor="@color/black"
+            android:textSize="20dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/etMSearch" />
+
+        <TextView
+            android:id="@+id/textView2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="최대 2개까지 선택 가능해요"
+            android:textColor="@color/subColor300"
+            android:textSize="16dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textView5" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvM2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/btnMComparision" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnMComparision"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:background="@drawable/effect_44"
+            android:backgroundTint="@color/black"
+            android:paddingStart="40dp"
+            android:paddingEnd="40dp"
+            android:stateListAnimator="@null"
+            android:text="비교 하기"
+            android:textColor="@color/white"
+            android:textSize="18dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textView2" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.core.widget.NestedScrollView
         android:id="@+id/nsvM"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/clMNavi"
+        app:layout_constraintTop_toTopOf="parent">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/clMList"
@@ -19,52 +161,16 @@
             android:background="@color/subColor100"
             android:visibility="visible">
 
-            <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/btnMComparision"
+            <ImageButton
+                android:id="@+id/ibtnMNavi"
                 android:layout_width="wrap_content"
-                android:layout_height="0dp"
-                android:layout_marginTop="5dp"
-                android:layout_marginEnd="45dp"
-                android:layout_marginBottom="5dp"
-                android:background="@drawable/effect_44"
-                android:backgroundTint="@color/black"
-                android:paddingStart="40dp"
-                android:paddingEnd="40dp"
-                android:stateListAnimator="@null"
-                android:text="비교 하기"
-                android:textColor="@color/white"
-                android:textSize="18dp"
-                app:layout_constraintBottom_toBottomOf="@+id/clMComparision"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@+id/clMComparision" />
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/clMComparision"
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_marginStart="40dp"
-                android:layout_marginEnd="40dp"
-                android:background="@drawable/bckgnd_rectangle_12"
-                android:visibility="invisible"
-                app:layout_constraintBottom_toBottomOf="@+id/tvMMeasureCount"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@+id/tvMMeasureCount"
-                app:layout_constraintTop_toTopOf="@+id/tvMMeasureCount">
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-            <TextView
-                android:id="@+id/tvMMeasureCount"
-                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="40dp"
                 android:layout_marginTop="20dp"
-                android:gravity="center"
-                android:paddingTop="10dp"
-                android:paddingBottom="10dp"
-                android:text="총 기록 건수"
-                android:textColor="@color/black"
-                android:textSize="24dp"
+                android:background="@drawable/effect_20"
+                android:backgroundTint="@color/subColor100"
+                android:padding="6dp"
+                android:src="@drawable/ic_navi"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
@@ -75,10 +181,11 @@
                 android:layout_marginStart="40dp"
                 android:layout_marginTop="20dp"
                 android:layout_marginEnd="40dp"
+                android:visibility="visible"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tvMMeasureCount"
+                app:layout_constraintTop_toBottomOf="@+id/ibtnMNavi"
                 app:layout_constraintVertical_bias="0.0">
 
                 <LinearLayout
@@ -102,12 +209,13 @@
                 android:id="@+id/rvM1"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="40dp"
+                android:layout_marginStart="30dp"
                 android:layout_marginTop="20dp"
-                android:layout_marginEnd="40dp"
+                android:layout_marginEnd="30dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/sflM" />
+
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
-</FrameLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
