@@ -11,6 +11,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.tangoplus.facebeauty.R
+import com.tangoplus.facebeauty.data.FaceDisplay
 import com.tangoplus.facebeauty.data.FaceResult
 import com.tangoplus.facebeauty.databinding.RvMeasureComparisonItemBinding
 import com.tangoplus.facebeauty.databinding.RvMeasureItemBinding
@@ -19,7 +20,7 @@ import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.vm.MainViewModel
 import java.lang.IllegalArgumentException
 
-class MeasureRVAdapter(private val context: Context, private val faceResults: List<FaceResult>, private val mvm : MainViewModel, private val case: Int = 0) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class MeasureRVAdapter(private val context: Context, private val faceResults: List<FaceDisplay>, private val mvm : MainViewModel, private val case: Int = 0) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     var measureClickListener : OnMeasureClickListener? = null
 
     inner class MeasureViewHolder(view: View): RecyclerView.ViewHolder(view) {

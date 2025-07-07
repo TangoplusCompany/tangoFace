@@ -100,7 +100,6 @@ object BitmapUtility {
                                 faceLandmarkResult,
                                 poseLandmarkResult,
                                 ivm.currentCheckedLines,
-                                ivm.currentCheckedRatioLines,
                                 ivm.currentFaceComparision,
                                 seq,
                                 cheeksState
@@ -145,7 +144,7 @@ object BitmapUtility {
         faceLandmarks: FaceLandmarkResult,
         poseLandmarks: PoseLandmarkResult,
         selectedData: MutableSet<DrawLine>,
-        selectedRatioLine: MutableSet<DrawRatioLine>,
+
         cfc : MutableList<FaceComparisonItem>,
         seq: Int,
         warningPoint: Int
@@ -350,8 +349,7 @@ object BitmapUtility {
         }
 
         // ----------------------------------# 비율 계산기 #------------------------------------
-        if (selectedRatioLine.contains(DrawRatioLine.A_VERTI)) {
-            Log.v("비율Ratio", "${selectedRatioLine}")
+        if (selectedData.contains(DrawLine.A_VERTI)) {
             val leftFace = listOf(21, 162, 127, 234, 93, 132, 58)
             val rightFace = listOf(251, 390, 356, 454, 323, 361)
             val minLeftIndex = leftFace.minByOrNull { index -> faceLandmarks.landmarks[index].x }
@@ -388,18 +386,18 @@ object BitmapUtility {
             drawExtendedLine(canvas, x5, y5, x5, y5 + 1, 400f, 400f, axis300Paint)
 
         }
-        if (selectedRatioLine.contains(DrawRatioLine.A_HORIZON)) {
-            Log.v("비율Ratio", "${selectedRatioLine}")
+        if (selectedData.contains(DrawLine.A_HORIZON)) {
+            Log.v("비율Ratio", "${selectedData}")
             val glabella = faceLandmarks.landmarks[8]
-            val subnazale = faceLandmarks.landmarks[2]
+            val subNazale = faceLandmarks.landmarks[2]
             val centerTopLips = faceLandmarks.landmarks[13]
             val menton = faceLandmarks.landmarks[152]
 
             val x0 = glabella.x
             val y0 = glabella.y
 
-            val x1 = subnazale.x
-            val y1 = subnazale.y
+            val x1 = subNazale.x
+            val y1 = subNazale.y
 
             val x2 = centerTopLips.x
             val y2 = centerTopLips.y
@@ -415,160 +413,160 @@ object BitmapUtility {
         }
 
         // ------------------------------# 선택에 따라 바로 그리기 #----------------------------------
-        if (selectedData.contains(DrawLine.A_EYE)) {
-            val leftLm = faceLandmarks.landmarks[468]
-            val rightLm = faceLandmarks.landmarks[473]
-            val x0 = leftLm.x
-            val y0 = leftLm.y
-            val x1 = rightLm.x
-            val y1 = rightLm.y
-
-
-            val cfcItem = cfc.find { it.label == "눈 수평 각도" }
-            val restValue = cfcItem?.restingValue
-            val occlusalValue = cfcItem?.occlusalValue
-            val riskLevel = when (seq) {
-                0 -> {
-                    getAngleLevel(restValue, DrawLine.A_EYE)
-                }
-                else -> {
-                    getAngleLevel(occlusalValue, DrawLine.A_EYE)
-                }
-            }
-            val paintt = when (riskLevel) {
-                0 -> axis300Paint
-                1 -> axisSubPaint
-                else -> axisPaint
-            }
-            drawExtendedLine(canvas, x0, y0, x1, y1, 250f, 250f, paintt)
-        }
-
-        if (selectedData.contains(DrawLine.A_EARFLAP)) {
-            val leftLm = faceLandmarks.landmarks[454]
-            val rightLm = faceLandmarks.landmarks[234]
-            val x0 = leftLm.x
-            val y0 = leftLm.y
-            val x1 = rightLm.x
-            val y1 = rightLm.y
-
-            val centerX = (leftLm.x + rightLm.x) / 2
-            val centerY = (leftLm.y + rightLm.y) / 2
-
-            val cfcItem = cfc.find { it.label == "귓바퀴 수평 각도" }
-            val restValue = cfcItem?.restingValue
-            val occlusalValue = cfcItem?.occlusalValue
-            val riskLevel = when (seq) {
-                0 -> {
-                    getAngleLevel(restValue, DrawLine.A_EARFLAP)
-                }
-                else -> {
-                    getAngleLevel(occlusalValue, DrawLine.A_EARFLAP)
-                }
-            }
-            val paintt = when (riskLevel) {
-                0 -> axis300Paint
-                1 -> axisSubPaint
-                else -> axisPaint
-            }
-
-            drawExtendedLine(canvas, centerX, centerY, x0, y0, 0f, 170f, paintt)
-            drawExtendedLine(canvas, centerX, centerY, x1, y1, 0f, 170f, paintt)
-        }
-
-        if (selectedData.contains(DrawLine.A_TIP_OF_LIPS)) {
-            val leftLm = faceLandmarks.landmarks[291]
-            val rightLm = faceLandmarks.landmarks[61]
-            val x0 = leftLm.x
-            val y0 = leftLm.y
-            val x1 = rightLm.x
-            val y1 = rightLm.y
-            val centerX = (leftLm.x + rightLm.x) / 2
-            val centerY = (leftLm.y + rightLm.y) / 2
-            // 어느 곳이 안좋은지 판단해서 넣기
-
-            val cfcItem = cfc.find { it.label == "입술 끝 수평 각도" }
-            val restValue = cfcItem?.restingValue
-            val occlusalValue = cfcItem?.occlusalValue
-            val riskLevel = when (seq) {
-                0 -> {
-                    getAngleLevel(restValue, DrawLine.A_TIP_OF_LIPS)
-                }
-                else -> {
-                    getAngleLevel(occlusalValue, DrawLine.A_TIP_OF_LIPS)
-                }
-            }
-            val paintt = when (riskLevel) {
-                0 -> axis300Paint
-                1 -> axisSubPaint
-                else -> axisPaint
-            }
-            drawExtendedLine(canvas, centerX, centerY, x0, y0, 0f, 250f, paintt)
-            drawExtendedLine(canvas, centerX, centerY, x1, y1, 0f, 250f, paintt)
-
-//            val y3 = (leftLm.y + rightLm.y ) / 2
-//            drawExtendedLine(canvas, x0, y3, x1, y3, 250f, 250f, axisPaint)
-
-        }
-        if (selectedData.contains(DrawLine.A_NOSE_CHIN)) {
-            val topLm0 = faceLandmarks.landmarks[4]
-            val bottomLm0 = faceLandmarks.landmarks[0]
-            val x00 = topLm0.x
-            val y00 = topLm0.y
-            val x01 = bottomLm0.x
-            val y01 = bottomLm0.y
-            drawExtendedLine(canvas, x00, y00, x01, y01, -10f, 0f, axis100Paint)
-
-            val topLm1 = faceLandmarks.landmarks[0]
-            val bottomLm1 = faceLandmarks.landmarks[17]
-            val x10 = topLm1.x
-            val y10 = topLm1.y
-            val x11 = bottomLm1.x
-            val y11 = bottomLm1.y
-            drawExtendedLine(canvas, x10, y10, x11, y11, 10f, 10f, axis200Paint)
-
-            val topLm2 = faceLandmarks.landmarks[17]
-            val bottomLm2 = faceLandmarks.landmarks[152]
-            val x20 = topLm2.x
-            val y20 = topLm2.y
-            val x21 = bottomLm2.x
-            val y21 = bottomLm2.y
-            drawExtendedLine(canvas, x20, y20, x21, y21, 0f, 50f, axis300Paint)
-
-//            drawExtendedLine(canvas, x00, y00, x00, y21, -10f, 100f, axisPaint)
-        }
-        if (selectedData.contains(DrawLine.A_EARFLAP_NASAL_WING)) {
-            // 귓볼 - 코 끝 선 왼쪽
-            val leftCheeksIndexes = listOf(234, 4)
-            val rightCheeksIndexes = listOf(454, 4)
-            val leftCheekLinePath = Path()
-            val rightCheekLinePath = Path()
-            leftCheeksIndexes.forEachIndexed { i, landmarkIndex ->
-                val landmark = faceLandmarks.landmarks[landmarkIndex]
-                val x = landmark.x
-                val y = landmark.y
-
-                if (i == 0) {
-                    leftCheekLinePath.moveTo(x, y) // 시작점
-                } else {
-                    leftCheekLinePath.lineTo(x, y) // 선 연결
-                }
-            }
-            canvas.drawPath(leftCheekLinePath, outLinePaint)
-
-            // 귓볼 - 코 끝 선 오른쪽
-            rightCheeksIndexes.forEachIndexed { i, landmarkIndex ->
-                val landmark = faceLandmarks.landmarks[landmarkIndex]
-                val x = landmark.x
-                val y = landmark.y
-
-                if (i == 0) {
-                    rightCheekLinePath.moveTo(x, y) // 시작점
-                } else {
-                    rightCheekLinePath.lineTo(x, y) // 선 연결
-                }
-            }
-            canvas.drawPath(rightCheekLinePath, outLinePaint)
-        }
+//        if (selectedData.contains(DrawLine.A_EYE)) {
+//            val leftLm = faceLandmarks.landmarks[468]
+//            val rightLm = faceLandmarks.landmarks[473]
+//            val x0 = leftLm.x
+//            val y0 = leftLm.y
+//            val x1 = rightLm.x
+//            val y1 = rightLm.y
+//
+//
+//            val cfcItem = cfc.find { it.label == "눈 수평 각도" }
+//            val restValue = cfcItem?.restingValue
+//            val occlusalValue = cfcItem?.occlusalValue
+//            val riskLevel = when (seq) {
+//                0 -> {
+//                    getAngleLevel(restValue, DrawLine.A_EYE)
+//                }
+//                else -> {
+//                    getAngleLevel(occlusalValue, DrawLine.A_EYE)
+//                }
+//            }
+//            val paintt = when (riskLevel) {
+//                0 -> axis300Paint
+//                1 -> axisSubPaint
+//                else -> axisPaint
+//            }
+//            drawExtendedLine(canvas, x0, y0, x1, y1, 250f, 250f, paintt)
+//        }
+//
+//        if (selectedData.contains(DrawLine.A_EARFLAP)) {
+//            val leftLm = faceLandmarks.landmarks[454]
+//            val rightLm = faceLandmarks.landmarks[234]
+//            val x0 = leftLm.x
+//            val y0 = leftLm.y
+//            val x1 = rightLm.x
+//            val y1 = rightLm.y
+//
+//            val centerX = (leftLm.x + rightLm.x) / 2
+//            val centerY = (leftLm.y + rightLm.y) / 2
+//
+//            val cfcItem = cfc.find { it.label == "귓바퀴 수평 각도" }
+//            val restValue = cfcItem?.restingValue
+//            val occlusalValue = cfcItem?.occlusalValue
+//            val riskLevel = when (seq) {
+//                0 -> {
+//                    getAngleLevel(restValue, DrawLine.A_EARFLAP)
+//                }
+//                else -> {
+//                    getAngleLevel(occlusalValue, DrawLine.A_EARFLAP)
+//                }
+//            }
+//            val paintt = when (riskLevel) {
+//                0 -> axis300Paint
+//                1 -> axisSubPaint
+//                else -> axisPaint
+//            }
+//
+//            drawExtendedLine(canvas, centerX, centerY, x0, y0, 0f, 170f, paintt)
+//            drawExtendedLine(canvas, centerX, centerY, x1, y1, 0f, 170f, paintt)
+//        }
+//
+//        if (selectedData.contains(DrawLine.A_TIP_OF_LIPS)) {
+//            val leftLm = faceLandmarks.landmarks[291]
+//            val rightLm = faceLandmarks.landmarks[61]
+//            val x0 = leftLm.x
+//            val y0 = leftLm.y
+//            val x1 = rightLm.x
+//            val y1 = rightLm.y
+//            val centerX = (leftLm.x + rightLm.x) / 2
+//            val centerY = (leftLm.y + rightLm.y) / 2
+//            // 어느 곳이 안좋은지 판단해서 넣기
+//
+//            val cfcItem = cfc.find { it.label == "입술 끝 수평 각도" }
+//            val restValue = cfcItem?.restingValue
+//            val occlusalValue = cfcItem?.occlusalValue
+//            val riskLevel = when (seq) {
+//                0 -> {
+//                    getAngleLevel(restValue, DrawLine.A_TIP_OF_LIPS)
+//                }
+//                else -> {
+//                    getAngleLevel(occlusalValue, DrawLine.A_TIP_OF_LIPS)
+//                }
+//            }
+//            val paintt = when (riskLevel) {
+//                0 -> axis300Paint
+//                1 -> axisSubPaint
+//                else -> axisPaint
+//            }
+//            drawExtendedLine(canvas, centerX, centerY, x0, y0, 0f, 250f, paintt)
+//            drawExtendedLine(canvas, centerX, centerY, x1, y1, 0f, 250f, paintt)
+//
+////            val y3 = (leftLm.y + rightLm.y ) / 2
+////            drawExtendedLine(canvas, x0, y3, x1, y3, 250f, 250f, axisPaint)
+//
+//        }
+//        if (selectedData.contains(DrawLine.A_NOSE_CHIN)) {
+//            val topLm0 = faceLandmarks.landmarks[4]
+//            val bottomLm0 = faceLandmarks.landmarks[0]
+//            val x00 = topLm0.x
+//            val y00 = topLm0.y
+//            val x01 = bottomLm0.x
+//            val y01 = bottomLm0.y
+//            drawExtendedLine(canvas, x00, y00, x01, y01, -10f, 0f, axis100Paint)
+//
+//            val topLm1 = faceLandmarks.landmarks[0]
+//            val bottomLm1 = faceLandmarks.landmarks[17]
+//            val x10 = topLm1.x
+//            val y10 = topLm1.y
+//            val x11 = bottomLm1.x
+//            val y11 = bottomLm1.y
+//            drawExtendedLine(canvas, x10, y10, x11, y11, 10f, 10f, axis200Paint)
+//
+//            val topLm2 = faceLandmarks.landmarks[17]
+//            val bottomLm2 = faceLandmarks.landmarks[152]
+//            val x20 = topLm2.x
+//            val y20 = topLm2.y
+//            val x21 = bottomLm2.x
+//            val y21 = bottomLm2.y
+//            drawExtendedLine(canvas, x20, y20, x21, y21, 0f, 50f, axis300Paint)
+//
+////            drawExtendedLine(canvas, x00, y00, x00, y21, -10f, 100f, axisPaint)
+//        }
+//        if (selectedData.contains(DrawLine.A_EARFLAP_NASAL_WING)) {
+//            // 귓볼 - 코 끝 선 왼쪽
+//            val leftCheeksIndexes = listOf(234, 4)
+//            val rightCheeksIndexes = listOf(454, 4)
+//            val leftCheekLinePath = Path()
+//            val rightCheekLinePath = Path()
+//            leftCheeksIndexes.forEachIndexed { i, landmarkIndex ->
+//                val landmark = faceLandmarks.landmarks[landmarkIndex]
+//                val x = landmark.x
+//                val y = landmark.y
+//
+//                if (i == 0) {
+//                    leftCheekLinePath.moveTo(x, y) // 시작점
+//                } else {
+//                    leftCheekLinePath.lineTo(x, y) // 선 연결
+//                }
+//            }
+//            canvas.drawPath(leftCheekLinePath, outLinePaint)
+//
+//            // 귓볼 - 코 끝 선 오른쪽
+//            rightCheeksIndexes.forEachIndexed { i, landmarkIndex ->
+//                val landmark = faceLandmarks.landmarks[landmarkIndex]
+//                val x = landmark.x
+//                val y = landmark.y
+//
+//                if (i == 0) {
+//                    rightCheekLinePath.moveTo(x, y) // 시작점
+//                } else {
+//                    rightCheekLinePath.lineTo(x, y) // 선 연결
+//                }
+//            }
+//            canvas.drawPath(rightCheekLinePath, outLinePaint)
+//        }
         if (selectedData.contains(DrawLine.A_GLABELLA_NOSE)) {
             val topLm0 = faceLandmarks.landmarks[10]
             val bottomLm0 = faceLandmarks.landmarks[9]
@@ -595,110 +593,110 @@ object BitmapUtility {
             drawExtendedLine(canvas, x20, y20, x21, y21, 30f, 0f, axis100Paint)
         }
 
-        if (selectedData.contains(DrawLine.D_EARFLAP_NOSE)) {
-            // 귓볼 - 코 끝 선 왼쪽
-            val leftCheeksIndexes = listOf(234, 64)
-            val rightCheeksIndexes = listOf(454, 294)
-            val leftCheekLinePath = Path()
-            val rightCheekLinePath = Path()
-            leftCheeksIndexes.forEachIndexed { i, landmarkIndex ->
-                val landmark = faceLandmarks.landmarks[landmarkIndex]
-                val x = landmark.x
-                val y = landmark.y
-
-                if (i == 0) {
-                    leftCheekLinePath.moveTo(x, y) // 시작점
-                } else {
-                    leftCheekLinePath.lineTo(x, y) // 선 연결
-                }
-            }
-            canvas.drawPath(leftCheekLinePath, axis300Paint)
-
-            // 귓볼 - 코 끝 선 오른쪽
-            rightCheeksIndexes.forEachIndexed { i, landmarkIndex ->
-                val landmark = faceLandmarks.landmarks[landmarkIndex]
-                val x = landmark.x
-                val y = landmark.y
-
-                if (i == 0) {
-                    rightCheekLinePath.moveTo(x, y) // 시작점
-                } else {
-                    rightCheekLinePath.lineTo(x, y) // 선 연결
-                }
-            }
-            canvas.drawPath(rightCheekLinePath, axis300Paint)
-        }
-        if (selectedData.contains(DrawLine.D_TIP_OF_LIPS_CENTER_LIPS)) {
-            val leftLm0 = faceLandmarks.landmarks[61]
-            val rightLm1 = faceLandmarks.landmarks[291]
-            val centerTopLm = faceLandmarks.landmarks[13]
-            val centerBottomLm = faceLandmarks.landmarks[14]
-            val x00 = leftLm0.x
-            val y00 = leftLm0.y
-            val x10 = rightLm1.x
-            val y10 = rightLm1.y
-            val x01 = centerTopLm.x
-            val y01 = centerTopLm.y
-            val x02 = centerBottomLm.x
-            val y02 = centerBottomLm.y
-            drawExtendedLine(canvas, x00, y00, x02, y02, 10f, 0f, axis300Paint)
-            drawExtendedLine(canvas, x10, y10, x02, y02, 10f, 0f, axis300Paint)
-            drawExtendedLine(canvas, x00, y00, x01, y01, 10f, 0f, outLinePaint)
-            drawExtendedLine(canvas, x10, y10, x01, y01, 10f, 0f, outLinePaint)
-
-//            drawExtendedLine(canvas, x01, y01, x01, y02, 20f, 20f, axisSubPaint)
-            drawExtendedLine(canvas, x01, y01, x02, y02, 20f, 20f, axis300Paint)
-        }
-
-        if (selectedData.contains(DrawLine.D_EARFLAP_NOSE) && selectedData.contains(DrawLine.A_EARFLAP_NASAL_WING)) {
-            // 귓볼 - 코 끝 선 왼쪽
-            val leftCheeksIndexes = listOf(4, 64)
-            val rightCheeksIndexes = listOf(4, 294)
-            val middleCheeksIndexes = listOf(64, 294)
-            val leftCheekLinePath = Path()
-            val rightCheekLinePath = Path()
-            val middleCheekLinePath = Path()
-            leftCheeksIndexes.forEachIndexed { i, landmarkIndex ->
-                val landmark = faceLandmarks.landmarks[landmarkIndex]
-                val x = landmark.x
-                val y = landmark.y
-
-                if (i == 0) {
-                    leftCheekLinePath.moveTo(x, y) // 시작점
-                } else {
-                    leftCheekLinePath.lineTo(x, y) // 선 연결
-                }
-            }
-            canvas.drawPath(leftCheekLinePath, outLinePaint)
-
-            // 귓볼 - 코 끝 선 오른쪽
-            rightCheeksIndexes.forEachIndexed { i, landmarkIndex ->
-                val landmark = faceLandmarks.landmarks[landmarkIndex]
-                val x = landmark.x
-                val y = landmark.y
-
-                if (i == 0) {
-                    rightCheekLinePath.moveTo(x, y) // 시작점
-                } else {
-                    rightCheekLinePath.lineTo(x, y) // 선 연결
-                }
-            }
-            canvas.drawPath(rightCheekLinePath, outLinePaint)
-            // 귓볼 - 코 끝 선 오른쪽
-            middleCheeksIndexes.forEachIndexed { i, landmarkIndex ->
-                val landmark = faceLandmarks.landmarks[landmarkIndex]
-                val x = landmark.x
-                val y = landmark.y
-
-                if (i == 0) {
-                    middleCheekLinePath.moveTo(x, y) // 시작점
-                } else {
-                    middleCheekLinePath.lineTo(x, y) // 선 연결
-                }
-            }
-
-            canvas.drawPath(middleCheekLinePath, outLinePaint)
-        }
+//        if (selectedData.contains(DrawLine.D_EARFLAP_NOSE)) {
+//            // 귓볼 - 코 끝 선 왼쪽
+//            val leftCheeksIndexes = listOf(234, 64)
+//            val rightCheeksIndexes = listOf(454, 294)
+//            val leftCheekLinePath = Path()
+//            val rightCheekLinePath = Path()
+//            leftCheeksIndexes.forEachIndexed { i, landmarkIndex ->
+//                val landmark = faceLandmarks.landmarks[landmarkIndex]
+//                val x = landmark.x
+//                val y = landmark.y
+//
+//                if (i == 0) {
+//                    leftCheekLinePath.moveTo(x, y) // 시작점
+//                } else {
+//                    leftCheekLinePath.lineTo(x, y) // 선 연결
+//                }
+//            }
+//            canvas.drawPath(leftCheekLinePath, axis300Paint)
+//
+//            // 귓볼 - 코 끝 선 오른쪽
+//            rightCheeksIndexes.forEachIndexed { i, landmarkIndex ->
+//                val landmark = faceLandmarks.landmarks[landmarkIndex]
+//                val x = landmark.x
+//                val y = landmark.y
+//
+//                if (i == 0) {
+//                    rightCheekLinePath.moveTo(x, y) // 시작점
+//                } else {
+//                    rightCheekLinePath.lineTo(x, y) // 선 연결
+//                }
+//            }
+//            canvas.drawPath(rightCheekLinePath, axis300Paint)
+//        }
+//        if (selectedData.contains(DrawLine.D_TIP_OF_LIPS_CENTER_LIPS)) {
+//            val leftLm0 = faceLandmarks.landmarks[61]
+//            val rightLm1 = faceLandmarks.landmarks[291]
+//            val centerTopLm = faceLandmarks.landmarks[13]
+//            val centerBottomLm = faceLandmarks.landmarks[14]
+//            val x00 = leftLm0.x
+//            val y00 = leftLm0.y
+//            val x10 = rightLm1.x
+//            val y10 = rightLm1.y
+//            val x01 = centerTopLm.x
+//            val y01 = centerTopLm.y
+//            val x02 = centerBottomLm.x
+//            val y02 = centerBottomLm.y
+//            drawExtendedLine(canvas, x00, y00, x02, y02, 10f, 0f, axis300Paint)
+//            drawExtendedLine(canvas, x10, y10, x02, y02, 10f, 0f, axis300Paint)
+//            drawExtendedLine(canvas, x00, y00, x01, y01, 10f, 0f, outLinePaint)
+//            drawExtendedLine(canvas, x10, y10, x01, y01, 10f, 0f, outLinePaint)
+//
+////            drawExtendedLine(canvas, x01, y01, x01, y02, 20f, 20f, axisSubPaint)
+//            drawExtendedLine(canvas, x01, y01, x02, y02, 20f, 20f, axis300Paint)
+//        }
+//
+//        if (selectedData.contains(DrawLine.D_EARFLAP_NOSE) && selectedData.contains(DrawLine.A_EARFLAP_NASAL_WING)) {
+//            // 귓볼 - 코 끝 선 왼쪽
+//            val leftCheeksIndexes = listOf(4, 64)
+//            val rightCheeksIndexes = listOf(4, 294)
+//            val middleCheeksIndexes = listOf(64, 294)
+//            val leftCheekLinePath = Path()
+//            val rightCheekLinePath = Path()
+//            val middleCheekLinePath = Path()
+//            leftCheeksIndexes.forEachIndexed { i, landmarkIndex ->
+//                val landmark = faceLandmarks.landmarks[landmarkIndex]
+//                val x = landmark.x
+//                val y = landmark.y
+//
+//                if (i == 0) {
+//                    leftCheekLinePath.moveTo(x, y) // 시작점
+//                } else {
+//                    leftCheekLinePath.lineTo(x, y) // 선 연결
+//                }
+//            }
+//            canvas.drawPath(leftCheekLinePath, outLinePaint)
+//
+//            // 귓볼 - 코 끝 선 오른쪽
+//            rightCheeksIndexes.forEachIndexed { i, landmarkIndex ->
+//                val landmark = faceLandmarks.landmarks[landmarkIndex]
+//                val x = landmark.x
+//                val y = landmark.y
+//
+//                if (i == 0) {
+//                    rightCheekLinePath.moveTo(x, y) // 시작점
+//                } else {
+//                    rightCheekLinePath.lineTo(x, y) // 선 연결
+//                }
+//            }
+//            canvas.drawPath(rightCheekLinePath, outLinePaint)
+//            // 귓볼 - 코 끝 선 오른쪽
+//            middleCheeksIndexes.forEachIndexed { i, landmarkIndex ->
+//                val landmark = faceLandmarks.landmarks[landmarkIndex]
+//                val x = landmark.x
+//                val y = landmark.y
+//
+//                if (i == 0) {
+//                    middleCheekLinePath.moveTo(x, y) // 시작점
+//                } else {
+//                    middleCheekLinePath.lineTo(x, y) // 선 연결
+//                }
+//            }
+//
+//            canvas.drawPath(middleCheekLinePath, outLinePaint)
+//        }
         return resultBitmap
     }
     fun drawExtendedLine(
@@ -788,35 +786,35 @@ object BitmapUtility {
 
         return scaledBitmap
     }
-    private fun getAngleLevel(value: Float?, type: DrawLine): Int {
-        Log.v("값", "$value $type")
-        val absValue = 180f - abs(value ?: 0f)
-
-        return when (type) {
-            DrawLine.A_EYE -> {
-                when {
-                    absValue <= 1.2f -> 0
-                    absValue <= 2.1f -> 1
-                    else -> 2
-                }
-            }
-            DrawLine.A_EARFLAP -> {
-                when {
-                    absValue <= 1.2f -> 0
-                    absValue <= 2.25f -> 1
-                    else -> 2
-                }
-            }
-            DrawLine.A_TIP_OF_LIPS -> {
-                when {
-                    absValue <= 1.8f -> 0
-                    absValue <= 3.2f -> 1
-                    else -> 2
-                }
-            }
-            else -> throw IllegalArgumentException("지원하지 않는 type입니다. eye, ear, lip 중 하나를 입력하세요.")
-        }
-    }
+//    private fun getAngleLevel(value: Float?, type: DrawLine): Int {
+//        Log.v("값", "$value $type")
+//        val absValue = 180f - abs(value ?: 0f)
+//
+//        return when (type) {
+//            DrawLine.A_EYE -> {
+//                when {
+//                    absValue <= 1.2f -> 0
+//                    absValue <= 2.1f -> 1
+//                    else -> 2
+//                }
+//            }
+//            DrawLine.A_EARFLAP -> {
+//                when {
+//                    absValue <= 1.2f -> 0
+//                    absValue <= 2.25f -> 1
+//                    else -> 2
+//                }
+//            }
+//            DrawLine.A_TIP_OF_LIPS -> {
+//                when {
+//                    absValue <= 1.8f -> 0
+//                    absValue <= 3.2f -> 1
+//                    else -> 2
+//                }
+//            }
+//            else -> throw IllegalArgumentException("지원하지 않는 type입니다. eye, ear, lip 중 하나를 입력하세요.")
+//        }
+//    }
 //    private fun setMoare(faceResult: FaceResult, seq: Int, originalBitmap: Bitmap): Bitmap {
 //        val jsonData = faceResult.results.getJSONObject(seq)
 //        val coordinates = extractAllImageCoordinates(jsonData)

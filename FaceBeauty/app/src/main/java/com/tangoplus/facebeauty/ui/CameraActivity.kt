@@ -93,6 +93,7 @@ import com.tangoplus.facebeauty.util.MathHelpers.getRealDistanceY
 import com.tangoplus.facebeauty.util.PreferenceUtility
 import com.tangoplus.facebeauty.vision.pose.PoseLandmarkerHelper
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.math.abs
 
@@ -382,7 +383,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     fDao.insertStatic(static4)
                     fDao.insertStatic(static5)
                     finishedResult.regDate = static0.reg_date
-
+                    releaseResources()
                     withContext(Dispatchers.Main) {
                         viewModel.comparisonDoubleItem = null
                         val intent = Intent(this@CameraActivity, MainActivity::class.java)
@@ -1246,6 +1247,22 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 }
             }
             mvm.currentFaceLandmarks = JSONArray()
+        }
+    }
+    private fun releaseResources() {
+        try {
+            imageAnalyzer?.clearAnalyzer()
+
+            cameraProvider?.unbindAll()
+            faceLandmarkerHelper.clearFaceLandmarker()
+            poseLandmarker.clearPoseLandmarker()
+
+            backgroundExecutor.shutdown()
+            backgroundExecutor.awaitTermination(1, TimeUnit.SECONDS)
+
+            Log.d(TAG, "Resources released successfully.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to release resources: ${e.message}", e)
         }
     }
 

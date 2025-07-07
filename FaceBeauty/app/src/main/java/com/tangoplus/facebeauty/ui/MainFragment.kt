@@ -13,7 +13,6 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AnimationUtils
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
@@ -45,6 +44,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import androidx.core.view.isVisible
+import com.tangoplus.facebeauty.data.FaceDisplay
+import com.tangoplus.facebeauty.ui.view.StickyHeaderItemDecoration
 
 
 class MainFragment : Fragment(), OnMeasureClickListener {
@@ -73,21 +74,45 @@ class MainFragment : Fragment(), OnMeasureClickListener {
 
         // 초기 셋업
 
+        mvm.dataLoadComplete.observe(viewLifecycleOwner) { isLoaded ->
+
+            if (isLoaded == true) {
+                Log.v("displayList", "${mvm.displayList.value}")
+                // ✅ 데이터 로드 완료 후 UI 처리
+                if (mvm.isMeasureFinish) {
+                    mvm.currentResult.value = mvm.currentFaceResults.firstOrNull()
+                    val infoDialog = InformationDialogFragment()
+                    infoDialog.show(requireActivity().supportFragmentManager, "")
+                }
+                Log.v("displayList", "${mvm.displayList.value}")
+
+                cancelShimmer()
+                val countText = "총 기록 건수: ${mvm.currentFaceResults.size}건"
+                bd.tvMMeasureCount.text = countText
+                setAdapter(mvm.displayList.value ?: listOf(), 2)
+
+                mvm.dataLoadComplete.value = false
+            }
+        }
+
+        // Room DB 로딩 시작
+        mvm.loadDataFromDB(requireContext())
+
+
         bd.clMList.visibility = View.VISIBLE
         initShimmer()
         setSideBar()
-        showListResult()
         setComparisonClick()
         setObserveComparisonState()
-
+        setSearchInput()
     }
 
-    private fun setAdapter(spanCount : Int) {
+    private fun setAdapter(data: List<FaceDisplay>, spanCount : Int) {
         bd.rvM1.apply {
             // 페이드 아웃 애니메이션
             animate()
                 .alpha(0f)
-                .setDuration(150)
+                .setDuration(100)
                 .setListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator) {
                         // 기존 decoration 제거
@@ -97,7 +122,7 @@ class MainFragment : Fragment(), OnMeasureClickListener {
 
                         val spacingPx = (5 * resources.displayMetrics.density).toInt() // 아이템 간 간격
                         addItemDecoration(GridSpacingItemDecoration(spanCount, spacingPx, true))
-                        val measureAdapter = MeasureRVAdapter(requireContext(), mvm.currentFaceResults, mvm)
+                        val measureAdapter = MeasureRVAdapter(requireContext(), data, mvm)
 
                         measureAdapter.measureClickListener = this@MainFragment
                         layoutManager = GridLayoutManager(requireContext(), spanCount)
@@ -107,7 +132,7 @@ class MainFragment : Fragment(), OnMeasureClickListener {
                         // 페이드 인 애니메이션
                         animate()
                             .alpha(1f)
-                            .setDuration(150)
+                            .setDuration(100)
                             .setListener(null)
                             .start()
                     }
@@ -116,89 +141,33 @@ class MainFragment : Fragment(), OnMeasureClickListener {
         }
     }
 
-    private fun convertToFaceResult(faceStatics: List<FaceStatic>): FaceResult {
-        val imageUris = mutableListOf<Uri?>()
-        val jsonArray = JSONArray()
-
-        faceStatics.forEach { faceStatic ->
-            // 1. mediaFileUri를 Uri로 변환해서 추가
-            try {
-                val imageUri = getImageUriFromFileName(requireContext(), faceStatic.mediaFileName)
-//                Log.v("imageUri있나요?", "$imageUri, ${faceStatic.mediaFileName} ${faceStatic.user_name}/${faceStatic.user_mobile}")
-                imageUris.add(imageUri)
-            } catch (e: Exception) {
-                imageUris.add(null)
-                Log.e("FaceResultConverter", "이미지 URI 파싱 실패: ${faceStatic.mediaFileName}", e)
-            }
-
-            // 2. jsonFileUri에서 JSON 파일 읽어서 JSONObject로 변환
-            try {
-                val jsonUri = getJsonUriFromFileName(requireContext(), faceStatic.jsonFileName)
-                val jsonObject = jsonUri?.let { readJsonFromUri(requireContext(), it) }
-//                Log.v("jsonObject있나요?", "${faceStatic.jsonFileName} $jsonUri ${faceStatic.user_name}/${faceStatic.user_mobile}, $jsonObject")
-                jsonArray.put(jsonObject)
-            } catch (e: Exception) {
-                Log.e("FaceResultConverter", "JSON 파일 읽기 실패: ${faceStatic.jsonFileName}", e)
-                // 빈 JSONObject라도 추가해서 배열 순서 맞추기
-                jsonArray.put(JSONObject())
-            }
-        }
-
-        return FaceResult(
-            tempServerSn = faceStatics[0].temp_server_sn,
-            userName = faceStatics[0].user_name,
-            userMobile = faceStatics[0].user_mobile,
-            imageUris = imageUris,
-            results = jsonArray,
-            regDate = faceStatics[0].reg_date
-        )
-    }
-
-
-    private fun convertToFaceResults(faceStaticList: List<FaceStatic>): List<FaceResult> {
-        // 현재 ViewModel에 있는 tempServerSn 목록 가져오기
-        val existingTempServerSns = mvm.currentFaceResults.map { it.tempServerSn }.toSet()
-
-        // temp_server_sn으로 그룹화하되, 이미 존재하는 것은 제외
-        val groupedData = faceStaticList
-            .filter { it.temp_server_sn >= 0 && !existingTempServerSns.contains(it.temp_server_sn) }
-            .groupBy { it.temp_server_sn }
-
-        Log.v("그룹된데이터", "$groupedData")
-        Log.v("기존데이터", "기존 tempServerSns: $existingTempServerSns")
-
-        return groupedData.map { (_, faceStatics) ->
-            convertToFaceResult(faceStatics)
-        }
-    }
-
-    private fun showListResult() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val fd = FaceDatabase.getDatabase(requireContext())
-            fDao = fd.faceDao()
-
-            val allFaceStatics = fDao.getAllData()
-            Log.v("전부", "${allFaceStatics.map { it.temp_server_sn }}")
-            val aa = convertToFaceResults(allFaceStatics)
-            aa.forEach {
-                mvm.currentFaceResults.add(it)
-            }
-            mvm.currentFaceResults.sortByDescending { it.tempServerSn }
-
-//            Log.v("mediaJson파일이름", "sn: ${gvm.currentFaceResults.map { it.tempServerSn }} media: ${gvm.currentFaceResults.map { it.imageUris }}")
-            withContext(Dispatchers.Main) {
-                if (mvm.isMeasureFinish) {
-                    mvm.currentResult.value = mvm.currentFaceResults.firstOrNull()
-                    val infoDialog = InformationDialogFragment()
-                    infoDialog.show(requireActivity().supportFragmentManager, "")
-                }
-                cancelShimmer()
-                val countText = "총 기록 건수: ${mvm.currentFaceResults.size}건"
-                bd.tvMMeasureCount.text = countText
-                setAdapter(2)
-            }
-        }
-    }
+//    private fun getUserListByDB() {
+//        lifecycleScope.launch(Dispatchers.IO) {
+//            val fd = FaceDatabase.getDatabase(requireContext())
+//            fDao = fd.faceDao()
+//
+//            val allFaceStatics = fDao.getAllData()
+//            Log.v("전부", "${allFaceStatics.map { it.temp_server_sn }}")
+//            val aa = convertToFaceResults(allFaceStatics)
+//            aa.forEach {
+//                mvm.currentFaceResults.add(it)
+//            }
+//            mvm.currentFaceResults.sortByDescending { it.tempServerSn }
+//
+////            Log.v("mediaJson파일이름", "sn: ${gvm.currentFaceResults.map { it.tempServerSn }} media: ${gvm.currentFaceResults.map { it.imageUris }}")
+//            withContext(Dispatchers.Main) {
+//                if (mvm.isMeasureFinish) {
+//                    mvm.currentResult.value = mvm.currentFaceResults.firstOrNull()
+//                    val infoDialog = InformationDialogFragment()
+//                    infoDialog.show(requireActivity().supportFragmentManager, "")
+//                }
+//                cancelShimmer()
+//                val countText = "총 기록 건수: ${mvm.currentFaceResults.size}건"
+//                bd.tvMMeasureCount.text = countText
+//                setAdapter(mvm.currentFaceResults,2)
+//            }
+//        }
+//    }
 
     private fun setComparisonClick() {
         bd.btnMComparision.setOnSingleClickListener {
@@ -232,12 +201,22 @@ class MainFragment : Fragment(), OnMeasureClickListener {
 
             if (mvm.tempComparisonItems.value?.size == 2 && bd.btnMComparision.text == "결과 보기") {
                 val sortedTempItems = mvm.tempComparisonItems.value?.sortedByDescending { it.regDate }
-                mvm.comparisonDoubleItem = Pair(sortedTempItems?.get(0)!! , sortedTempItems[1])
+
+                // 왼쪽 오른쪽 찾아서 DOUBLE 만들기
+                val leftResult = mvm.currentFaceResults.find { it.tempServerSn == sortedTempItems?.get(0)?.tempServerSn }
+                val rightResult = mvm.currentFaceResults.find { it.tempServerSn == sortedTempItems?.get(1)?.tempServerSn }
+
+
+                mvm.comparisonDoubleItem = Pair(leftResult!! , rightResult!!)
                 val infoDialog = InformationDialogFragment()
                 infoDialog.show(requireActivity().supportFragmentManager, "")
 
                 // 비교해제하면서 전부 끄기
-                Handler(Looper.getMainLooper()).postDelayed({ mvm.setComparisonState(false) }, 250)
+                Handler(Looper.getMainLooper()).postDelayed(
+                    {
+                        mvm.setComparisonState(false)
+                        bd.etMSearch.setText("")
+                    }, 250)
                 return@setOnSingleClickListener
             }
 
@@ -283,7 +262,6 @@ class MainFragment : Fragment(), OnMeasureClickListener {
             bd.rvM2.layoutManager = layoutManager
             bd.rvM2.adapter = adapter
         }
-
     }
 
     private fun setObserveComparisonItems() {
@@ -306,53 +284,133 @@ class MainFragment : Fragment(), OnMeasureClickListener {
                 // 숨기기
                 animateExpand(requireContext(), bd.clMNavi, false) {
                     bd.clMNavi.visibility = View.GONE
-                    setAdapter(3)
+                    bd.etMSearch.setText("")
+                    mvm.displayList.value?.let { it1 -> setAdapter(it1,3) }
                 }
             } else {
                 // 보이기
                 bd.clMNavi.visibility = View.VISIBLE
                 animateExpand(requireContext(), bd.clMNavi, true) {
-                    setAdapter(2)
+                    mvm.displayList.value?.let { it1 -> setAdapter(it1,3) }
                 }
             }
         }
     }
-    fun analyzeString(input: String)  {
 
-    }
     private fun setSearchInput() {
-        bd.etMSearch.addTextChangedListener(object: TextWatcher{
+        val hangulSyllableRegex = Regex("^[가-힣]+$")
+
+        bd.etMSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 val afterText = s.toString()
+                val filteredResult: List<FaceDisplay>
 
-
-                var filteredResult = listOf<FaceResult>()
                 if (afterText.isNotEmpty()) {
                     when {
+                        // 숫자만 입력된 경우
                         afterText.all { it.isDigit() } -> {
                             val number = afterText.toIntOrNull()
                             if (number != null) {
-                                filteredResult = mvm.currentFaceResults.filter { it.userMobile?.contains(afterText) == true }
+                                filteredResult = mvm.displayList.value?.filter {
+                                    it.userMobile?.contains(afterText) == true
+                                }!!
+                                setAdapter(filteredResult, 2)
                             }
                         }
-                        afterText.any { it.isLetter() } -> {
-                            val hasEnglish = afterText.any { it.isLetter() && it.code in 65..122 }
-                            val hasKorean = afterText.any { it.code in 0xAC00..0xD7A3 }
-                            if (hasEnglish || hasKorean) {
-                                filteredResult = mvm.currentFaceResults.filter { it.userName?.contains(afterText) == true }
-                            }
+                        hangulSyllableRegex.matches(afterText) -> {
+                            filteredResult = mvm.displayList.value?.filter {
+                                it.userName?.contains(afterText) == true
+                            }!!
+                            setAdapter(filteredResult, 2)
                         }
+                        else -> {}
                     }
+                } else {
+                    mvm.displayList.value?.let { it1 -> setAdapter(it1,2) }
+                    return
                 }
-                // TODO 어댑터에 들어갈 데이터 변경 후 새롭게 갱신되게끔 하기 + TODO 어댑터위에 텍스트 데코 레이션 넣기
-//                setAdapter(filteredResult, 2)
-
-                
             }
         })
     }
+//    private fun setSwitchRvState() {
+//        bd.msMFilter.setOnCheckedChangeListener { _, isChecked ->
+//            if (isChecked) {
+//                bd.etMSearch.setText("")
+//                setGrouppingByUser(mvm.currentFaceResults)
+//            } else {
+//                setAdapter(mvm.currentFaceResults, 2, true)
+//            }
+//        }
+//    }
+//    private fun setGrouppingByUser(faceResults: List<FaceResult>) {
+//        // 1. 이름별로 그룹화하고 정렬
+//        val groupedByName = faceResults
+//            .groupBy { it.userName ?: "이름 없음" }
+//            .toSortedMap() // 이름 기준 오름차순 정렬
+//
+//        // 2. 각 그룹 내에서 tempServerSn 기준으로 정렬하고 평면화
+//        val sortedList = groupedByName
+//            .flatMap { (_, group) ->
+//                group.sortedByDescending { it.tempServerSn }
+//            }
+//        val isHeaderFunction: (Int) -> Boolean = { position ->
+//            if (position == 0) {
+//                true
+//            } else {
+//                val current = sortedList[position]
+//                val previous = sortedList[position - 1]
+//                (current.userName ?: "이름 없음") != (previous.userName ?: "이름 없음")
+//            }
+//        }
+//
+//        // 3. 어댑터 설정
+////        setAdapter(sortedList, 2)
+//        val gridLayoutManager = GridLayoutManager(requireContext(), 2)
+//        gridLayoutManager.spanSizeLookup = object  : GridLayoutManager.SpanSizeLookup() {
+//            override fun getSpanSize(position: Int): Int {
+//                Log.v("isHeaderFunction", "${isHeaderFunction(position)}")
+//                return  if (isHeaderFunction(position)) {
+//                    Log.v("헤더", "2")
+//                    2
+//                } else {
+//                    Log.v("헤더", "1")
+//                    1
+//                }
+////                return 1
+//            }
+//        }
+//        bd.rvM1.layoutManager = gridLayoutManager
+//        while (bd.rvM1.itemDecorationCount > 0) {
+//            bd.rvM1.removeItemDecorationAt(0)
+//        }
+//
+//        // 4. 스티키 헤더 데코레이션 추가
+//        val decoration = StickyHeaderItemDecoration(
+//            isHeader = { position ->
+//                if (position == 0) {
+//                    true // 첫 번째 아이템은 항상 헤더
+//                } else {
+//                    val current = sortedList[position]
+//                    val previous = sortedList[position - 1]
+//                    current.userName != previous.userName // 이름이 바뀌면 새 헤더
+//                }
+//            },
+//            getHeaderTitle = { position ->
+//                sortedList[position].userName ?: "이름 없음"
+//            }
+//        )
+//
+//        // 기존 데코레이션 제거 후 새로 추가
+//        bd.rvM1.addItemDecoration(decoration)
+//
+//        Log.v("이름 묶음", "그룹 수: ${groupedByName.size}")
+//        Log.v("이름 묶음", "전체 아이템: ${sortedList.size}")
+//        groupedByName.forEach { (name, items) ->
+//            Log.v("이름 묶음", "$name: ${items.size}개")
+//        }
+//    }
 
     override fun onMeasureClick(tempServerSn: Int) {
         mvm.currentResult.value = mvm.currentFaceResults.find { it.tempServerSn == tempServerSn }

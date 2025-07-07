@@ -1,12 +1,15 @@
 package com.tangoplus.facebeauty.data
 
 enum class DrawLine {
-    A_EYE,
-    A_EARFLAP,
-    A_TIP_OF_LIPS,
+    A_VERTI,
+    A_HORIZON,
+    A_CANTHUS_ORAL,
+    A_NASALWINGS_ORAL,
+    E_CHEEKS,
     A_GLABELLA_NOSE,
-    A_NOSE_CHIN,
-    A_EARFLAP_NASAL_WING,
-    D_EARFLAP_NOSE,
-    D_TIP_OF_LIPS_CENTER_LIPS
+    A_NOSE_JAW,
+    A_BELOW_LIPS,
+    A_SHOULDER,
+    A_EAR,
+    A_NECK,
 }

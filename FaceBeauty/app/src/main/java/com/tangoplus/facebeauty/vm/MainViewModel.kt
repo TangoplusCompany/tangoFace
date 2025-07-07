@@ -1,10 +1,24 @@
 package com.tangoplus.facebeauty.vm
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.tangoplus.facebeauty.data.FaceDisplay
 import com.tangoplus.facebeauty.data.FaceResult
+import com.tangoplus.facebeauty.data.db.FaceDatabase
+import com.tangoplus.facebeauty.data.db.FaceStatic
+import com.tangoplus.facebeauty.util.FileUtility.getImageUriFromFileName
+import com.tangoplus.facebeauty.util.FileUtility.getJsonUriFromFileName
+import com.tangoplus.facebeauty.util.FileUtility.readJsonFromUri
 import com.tangoplus.facebeauty.vision.face.FaceLandmarkerHelper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainViewModel : ViewModel() {
 
@@ -83,7 +97,93 @@ class MainViewModel : ViewModel() {
         return isSeqFinished
     }
 
+    // 초기 db에서 데이터 전부 담기 + adapter에서 쓸 DTO 만들기
     val currentFaceResults = mutableListOf<FaceResult>()
+    val displayList = MutableLiveData<List<FaceDisplay>>()
+    val dataLoadComplete = MutableLiveData<Boolean>()
+    fun loadDataFromDB(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val dao = FaceDatabase.getDatabase(context).faceDao()
+            val allData = dao.getAllData()
+
+            currentFaceResults.clear()
+            Log.v("전부", "${allData.map { it.temp_server_sn }}")
+            val aa = convertToFaceResults(context, allData)
+            aa.forEach {
+                currentFaceResults.add(it)
+            }
+            currentFaceResults.sortByDescending { it.tempServerSn }
+
+            val displayItems = currentFaceResults.map {
+                FaceDisplay(
+                    tempServerSn = it.tempServerSn,
+                    userName = it.userName,
+                    userMobile = it.userMobile,
+                    regDate = it.regDate
+                )
+            }
+            displayList.postValue(displayItems)
+
+            dataLoadComplete.postValue(true)
+
+        }
+    }
+
+    private fun convertToFaceResult(context: Context, faceStatics: List<FaceStatic>): FaceResult {
+        val imageUris = mutableListOf<Uri?>()
+        val jsonArray = JSONArray()
+
+        faceStatics.forEach { faceStatic ->
+            // 1. mediaFileUri를 Uri로 변환해서 추가
+            try {
+                val imageUri = getImageUriFromFileName(context, faceStatic.mediaFileName)
+//                Log.v("imageUri있나요?", "$imageUri, ${faceStatic.mediaFileName} ${faceStatic.user_name}/${faceStatic.user_mobile}")
+                imageUris.add(imageUri)
+            } catch (e: Exception) {
+                imageUris.add(null)
+                Log.e("FaceResultConverter", "이미지 URI 파싱 실패: ${faceStatic.mediaFileName}", e)
+            }
+
+            // 2. jsonFileUri에서 JSON 파일 읽어서 JSONObject로 변환
+            try {
+                val jsonUri = getJsonUriFromFileName(context, faceStatic.jsonFileName)
+                val jsonObject = jsonUri?.let { readJsonFromUri(context, it) }
+//                Log.v("jsonObject있나요?", "${faceStatic.jsonFileName} $jsonUri ${faceStatic.user_name}/${faceStatic.user_mobile}, $jsonObject")
+                jsonArray.put(jsonObject)
+            } catch (e: Exception) {
+                Log.e("FaceResultConverter", "JSON 파일 읽기 실패: ${faceStatic.jsonFileName}", e)
+                // 빈 JSONObject라도 추가해서 배열 순서 맞추기
+                jsonArray.put(JSONObject())
+            }
+        }
+
+        return FaceResult(
+            tempServerSn = faceStatics[0].temp_server_sn,
+            userName = faceStatics[0].user_name,
+            userMobile = faceStatics[0].user_mobile,
+            imageUris = imageUris,
+            results = jsonArray,
+            regDate = faceStatics[0].reg_date
+        )
+    }
+
+
+    private fun convertToFaceResults(context: Context,  faceStaticList: List<FaceStatic>): List<FaceResult> {
+        // 현재 ViewModel에 있는 tempServerSn 목록 가져오기
+        val existingTempServerSns = currentFaceResults.map { it.tempServerSn }.toSet()
+
+        // temp_server_sn으로 그룹화하되, 이미 존재하는 것은 제외
+        val groupedData = faceStaticList
+            .filter { it.temp_server_sn >= 0 && !existingTempServerSns.contains(it.temp_server_sn) }
+            .groupBy { it.temp_server_sn }
+
+        Log.v("그룹된데이터", "$groupedData")
+        Log.v("기존데이터", "기존 tempServerSns: $existingTempServerSns")
+
+        return groupedData.map { (_, faceStatics) ->
+            convertToFaceResult(context, faceStatics)
+        }
+    }
 
     // 비교일 경우
     private var _comparisonState = MutableLiveData<Boolean>()
@@ -99,15 +199,15 @@ class MainViewModel : ViewModel() {
 
     var comparisonDoubleItem : Pair<FaceResult, FaceResult>? = null
 
-    private val _tempComparisonItems = MutableLiveData<MutableList<FaceResult>>(mutableListOf())
-    val tempComparisonItems : LiveData<MutableList<FaceResult>> = _tempComparisonItems
-    fun addItem(item: FaceResult) {
+    private val _tempComparisonItems = MutableLiveData<MutableList<FaceDisplay>>(mutableListOf())
+    val tempComparisonItems : LiveData<MutableList<FaceDisplay>> = _tempComparisonItems
+    fun addItem(item: FaceDisplay) {
         val currentList = _tempComparisonItems.value ?: mutableListOf()
         currentList.add(item)
         _tempComparisonItems.value = currentList.toMutableList()
     }
 
-    fun removeItem(item: FaceResult) {
+    fun removeItem(item: FaceDisplay) {
         val currentList = _tempComparisonItems.value ?: mutableListOf()
         currentList.remove(item)
         _tempComparisonItems.value = currentList.toMutableList()

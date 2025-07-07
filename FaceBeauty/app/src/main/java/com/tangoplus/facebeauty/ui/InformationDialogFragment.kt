@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 
 class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
     OnAdapterMoreClickListener {
-    private lateinit var binding: FragmentInformationDialogBinding
+    private lateinit var bd: FragmentInformationDialogBinding
 //    private val mvm : MeasureViewModel by activityViewModels()
     private val ivm : InformationViewModel by activityViewModels()
     private val mvm : MainViewModel by activityViewModels()
@@ -46,8 +46,8 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = FragmentInformationDialogBinding.inflate(inflater)
-        return binding.root
+        bd = FragmentInformationDialogBinding.inflate(inflater)
+        return bd.root
     }
     override fun onResume() {
         super.onResume()
@@ -59,8 +59,9 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.ibtnIDBack.setOnSingleClickListener {
+        bd.ibtnIDBack.setOnSingleClickListener {
             dismiss()
+            ivm.setSeqIndex(0)
         }
 
         // double확인해서 비교인지 상세보기인지 판단
@@ -76,18 +77,18 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 
     override fun onFaceStaticCheck(drawLineIndex: Int, isChecked: Boolean) {
         val selectedLine = when (drawLineIndex) {
-            0 -> DrawLine.A_EYE
-            1 -> DrawLine.A_EARFLAP
-            2 -> DrawLine.A_TIP_OF_LIPS
-            3 -> DrawLine.A_GLABELLA_NOSE
-            4 -> DrawLine.A_NOSE_CHIN
-            5 -> DrawLine.A_EARFLAP_NASAL_WING
-            6 -> DrawLine.A_EARFLAP_NASAL_WING
-            7 -> DrawLine.D_EARFLAP_NOSE
-            8 -> DrawLine.D_EARFLAP_NOSE
-            9 -> DrawLine.D_TIP_OF_LIPS_CENTER_LIPS
-            10 -> DrawLine.D_TIP_OF_LIPS_CENTER_LIPS
-            else -> DrawLine.A_EYE
+//            0 -> DrawLine.A_GLABELLA_NOSE
+//            1 -> DrawLine.A_GLABELLA_NOSE
+//            2 -> DrawLine.A_TIP_OF_LIPS
+//            3 -> DrawLine.A_GLABELLA_NOSE
+//            4 -> DrawLine.A_NOSE_CHIN
+//            5 -> DrawLine.A_EARFLAP_NASAL_WING
+//            6 -> DrawLine.A_EARFLAP_NASAL_WING
+//            7 -> DrawLine.D_EARFLAP_NOSE
+//            8 -> DrawLine.D_EARFLAP_NOSE
+//            9 -> DrawLine.D_TIP_OF_LIPS_CENTER_LIPS
+//            10 -> DrawLine.D_TIP_OF_LIPS_CENTER_LIPS
+            else -> DrawLine.A_GLABELLA_NOSE
         }
         when (isChecked) {
             true -> ivm.currentCheckedLines.add(selectedLine)
@@ -96,14 +97,22 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         Log.v("체크", "$drawLineIndex, $isChecked / $selectedLine ${ivm.currentCheckedLines}")
         setImage()
     }
+
+    private fun setRatioBtn() {
+        // TODO 라티오는 따로 뺴버리기 -> 정면에서만 켜지게끔 -> 아니면 자동 off
+        bd.btnIDRatio.setOnSingleClickListener {  }
+    }
+
+
+
     override fun adapterMoreClicked(isExpanded: Boolean) {
         Log.v("확장", "inFragment = $isExpanded")
         if (!isExpanded) {
-            binding.llGDRatioTitle.visibility = View.VISIBLE
-            binding.tvGDRatioTitle.visibility = View.VISIBLE
+            bd.llGDRatioTitle.visibility = View.VISIBLE
+            bd.tvGDRatioTitle.visibility = View.VISIBLE
         } else {
-            binding.llGDRatioTitle.visibility = View.GONE
-            binding.tvGDRatioTitle.visibility = View.GONE
+            bd.llGDRatioTitle.visibility = View.GONE
+            bd.tvGDRatioTitle.visibility = View.GONE
         }
     }
     private fun setRatioCheckSwitch() {
@@ -121,23 +130,23 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
             val vertiText = calculateRatios(vertiCoordinates, true)
             val horizonText = calculateRatios(horizonCoordinates, false)
 
-            binding.tvGDVerti.text = "${vertiText.map { df.format(it) }}"
+            bd.tvGDVerti.text = "${vertiText.map { df.format(it) }}"
                 .replace("[", "")
                 .replace("]", "")
                 .replace(", ", " : ")
-            binding.tvGDHorizon.text = "${horizonText.map { df.format(it) }}"
+            bd.tvGDHorizon.text = "${horizonText.map { df.format(it) }}"
                 .replace("[", "")
                 .replace("]", "")
                 .replace(", ", " : ")
         }
 
-        binding.cbGDVerti.setOnCheckedChangeListener { _, isChecked ->
+        bd.cbGDVerti.setOnCheckedChangeListener { _, isChecked ->
             setRatioLineInImage(true, isChecked)
         }
-        binding.cbGDHorizon.setOnCheckedChangeListener { _, isChecked ->
+        bd.cbGDHorizon.setOnCheckedChangeListener { _, isChecked ->
             setRatioLineInImage(false, isChecked)
         }
-//        binding.tvGDVerti.setOnSingleClickListener {
+//        bd.tvGDVerti.setOnSingleClickListener {
 //            val balloon = Balloon.Builder(requireContext())
 //                .setWidth(BalloonSizeSpec.WRAP)
 //                .setHeight(BalloonSizeSpec.WRAP)
@@ -154,11 +163,11 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 //                .setLifecycleOwner(viewLifecycleOwner)
 //                .setOnBalloonDismissListener {  }
 //                .build()
-//            binding.tvGDVerti.showAlignTop(balloon)
+//            bd.tvGDVerti.showAlignTop(balloon)
 //            balloon.dismissWithDelay(3000L)
 //            balloon.setOnBalloonClickListener { balloon.dismiss() }
 //        }
-//        binding.tvGDHorizon.setOnSingleClickListener {
+//        bd.tvGDHorizon.setOnSingleClickListener {
 //            val balloon = Balloon.Builder(requireContext())
 //                .setWidth(BalloonSizeSpec.WRAP)
 //                .setHeight(BalloonSizeSpec.WRAP)
@@ -175,7 +184,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 //                .setLifecycleOwner(viewLifecycleOwner)
 //                .setOnBalloonDismissListener {  }
 //                .build()
-//            binding.tvGDHorizon.showAlignTop(balloon)
+//            bd.tvGDHorizon.showAlignTop(balloon)
 //            balloon.dismissWithDelay(3000L)
 //            balloon.setOnBalloonClickListener { balloon.dismiss() }
 //        }
@@ -196,8 +205,8 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         setImage()
     }
     private fun setResult() {
-        binding.ssiv1.recycle()
-        binding.ssiv2.recycle()
+        bd.ssiv1.recycle()
+        bd.ssiv2.recycle()
 
         // 비교인지 확인 TODO 여기서 데이터 확인한 후 보내야 함 3분할일지?
         if (mvm.comparisonDoubleItem != null) {
@@ -219,13 +228,13 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         Log.v("staticDatas", "${ivm.currentFaceComparision}")
 
         val faceStaticAdapter = FaceStaticRVAdapter(ivm.currentFaceComparision)
-        binding.msGD.setOnCheckedChangeListener { _, isChecked ->
+        bd.msGD.setOnCheckedChangeListener { _, isChecked ->
             // 리스너 동작
             setLinesInImage(isChecked)
             faceStaticAdapter.setAllChecked(isChecked)
         }
 
-        binding.rvGD2.apply {
+        bd.rvGD2.apply {
             while (itemDecorationCount > 0) {
                 removeItemDecorationAt(0)
             }
@@ -297,14 +306,14 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         lifecycleScope.launch {
             if (isDoubleMode) {
                 mvm.comparisonDoubleItem?.let { (left, right) ->
-                    setImage(this@InformationDialogFragment, left, leftSeq, binding.ssiv1, ivm)
-                    setImage(this@InformationDialogFragment, right, rightSeq, binding.ssiv2, ivm)
+                    setImage(this@InformationDialogFragment, left, leftSeq, bd.ssiv1, ivm)
+                    setImage(this@InformationDialogFragment, right, rightSeq, bd.ssiv2, ivm)
                 }
             } else {
                 mvm.currentResult.value?.let { result ->
                     // value가 한 번만 호출되고 재사용됨
-                    setImage(this@InformationDialogFragment, result, leftSeq, binding.ssiv1, ivm)
-                    setImage(this@InformationDialogFragment, result, rightSeq, binding.ssiv2, ivm)
+                    setImage(this@InformationDialogFragment, result, leftSeq, bd.ssiv1, ivm)
+                    setImage(this@InformationDialogFragment, result, rightSeq, bd.ssiv2, ivm)
                 }
             }
         }
@@ -312,42 +321,83 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
     }
 
     private fun setLinesInImage(switchedOn: Boolean) {
-        when (switchedOn) {
-            true -> {
-                ivm.currentCheckedLines.add(DrawLine.A_EYE)
-                ivm.currentCheckedLines.add(DrawLine.A_EARFLAP)
-                ivm.currentCheckedLines.add(DrawLine.A_TIP_OF_LIPS)
-//                gvm.currentCheckedLines.add(DrawLine.A_GLABELLA_NOSE)
-//                gvm.currentCheckedLines.add(DrawLine.A_NOSE_CHIN)
-//                gvm.currentCheckedLines.add(DrawLine.A_EARFLAP_NASAL_WING)
-//                gvm.currentCheckedLines.add(DrawLine.D_EARFLAP_NOSE)
-//                gvm.currentCheckedLines.add(DrawLine.D_TIP_OF_LIPS_CENTER_LIPS)
+        if (switchedOn) {
+            if (mvm.comparisonDoubleItem == null) {
+                when (ivm.getSeqIndex()) {
+                    0 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_CANTHUS_ORAL)
+                        ivm.currentCheckedLines.add(DrawLine.A_NASALWINGS_ORAL)
+                        ivm.currentCheckedLines.add(DrawLine.E_CHEEKS)
+                    }
+                    1 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_GLABELLA_NOSE)
+                        ivm.currentCheckedLines.add(DrawLine.A_NOSE_JAW)
+                    }
+                    2 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_BELOW_LIPS)
+                        ivm.currentCheckedLines.add(DrawLine.A_SHOULDER)
+                        ivm.currentCheckedLines.add(DrawLine.A_EAR)
+                        ivm.currentCheckedLines.add(DrawLine.A_NECK)
+                    }
+                }
+            } else {
+                when (ivm.getSeqIndex()) {
+                    0 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_CANTHUS_ORAL)
+                        ivm.currentCheckedLines.add(DrawLine.A_NASALWINGS_ORAL)
+                        ivm.currentCheckedLines.add(DrawLine.E_CHEEKS)
+                    }
+                    1 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_CANTHUS_ORAL)
+                        ivm.currentCheckedLines.add(DrawLine.A_NASALWINGS_ORAL)
+                        ivm.currentCheckedLines.add(DrawLine.E_CHEEKS)
+                    }
+                    2 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_GLABELLA_NOSE)
+                        ivm.currentCheckedLines.add(DrawLine.A_NOSE_JAW)
+                    }
+                    3 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_GLABELLA_NOSE)
+                        ivm.currentCheckedLines.add(DrawLine.A_NOSE_JAW)
+                    }
+                    4 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_BELOW_LIPS)
+                    }
+                    5 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_SHOULDER)
+                        ivm.currentCheckedLines.add(DrawLine.A_EAR)
+                        ivm.currentCheckedLines.add(DrawLine.A_NECK)
+                    }
+
+                }
             }
-            false -> {
-                ivm.currentCheckedLines.clear()
-            }
+            ivm.currentCheckedLines.add(DrawLine.A_VERTI)
+            ivm.currentCheckedLines.add(DrawLine.A_HORIZON)
+        } else {
+            ivm.currentCheckedLines.clear()
         }
+
         setImage()
     }
 
     private fun showZoomInDialogFragment() {
         val leftSeq = if (ivm.getSeqIndex() == 0 ) 0 else 2
         val rightSeq = if (ivm.getSeqIndex() == 0) 1 else 3
-        binding.ssiv1.setOnLongClickListener {
+        bd.ssiv1.setOnLongClickListener {
             val zoomInDialog = ZoomInDialogFragment.newInstance(leftSeq)
             zoomInDialog.show(requireActivity().supportFragmentManager, "")
             true
         }
-        binding.ssiv2.setOnLongClickListener {
+        bd.ssiv2.setOnLongClickListener {
             val zoomInDialog = ZoomInDialogFragment.newInstance(rightSeq)
             zoomInDialog.show(requireActivity().supportFragmentManager, "")
             true
         }
     }
     private fun setComparisonButtons() {
-        binding.llIDBottom.visibility = View.VISIBLE
-        binding.divIDHorizon.visibility = View.VISIBLE
-        val btns = listOf(binding.tvID1, binding.tvID2, binding.tvID3, binding.tvID4, binding.tvID5, binding.tvID6)
+        bd.llIDBottom.visibility = View.VISIBLE
+        bd.divIDHorizon.visibility = View.VISIBLE
+        val btns = listOf(bd.tvID1, bd.tvID2, bd.tvID3, bd.tvID4, bd.tvID5, bd.tvID6)
         btns.forEachIndexed { indexx, tv ->
             // 초기 색상 설정
             tv.setTextColor(ContextCompat.getColor(requireContext(),
@@ -370,14 +420,14 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
     }
 
     private fun setDetailButtons() {
-        binding.llIDBottom.visibility = View.GONE
-        binding.divIDHorizon.visibility = View.GONE
+        bd.llIDBottom.visibility = View.GONE
+        bd.divIDHorizon.visibility = View.GONE
 
-        binding.tvID1.text = "정면, 교합"
-        binding.tvID2.text = "턱 좌우 이동"
-        binding.tvID3.text = "입 벌림, 목폄"
+        bd.tvID1.text = "정면, 교합"
+        bd.tvID2.text = "턱 좌우 이동"
+        bd.tvID3.text = "입 벌림, 목폄"
 
-        val btns = listOf(binding.tvID1, binding.tvID2, binding.tvID3)
+        val btns = listOf(bd.tvID1, bd.tvID2, bd.tvID3)
         btns.forEachIndexed { indexx, tv ->
             // 초기 색상 설정
             tv.setTextColor(ContextCompat.getColor(requireContext(),
@@ -410,7 +460,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
             ""
         }
         val info = "$name, $transformMobile"
-        binding.tvIdInfo.text = info
+        bd.tvIdInfo.text = info
     }
 
 

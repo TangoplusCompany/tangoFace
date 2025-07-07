@@ -104,7 +104,7 @@ class TextInputDialogFragment : DialogFragment() {
             binding.etTIDName.requestFocus()
             val imm = requireActivity().getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(binding.etTIDName, InputMethodManager.SHOW_IMPLICIT)
-        }, 250)
+        }, 500)
 
         // 이름
         val nameTextWatcher = namePatternCheck(ivm, binding.etTIDName)
@@ -167,13 +167,11 @@ class TextInputDialogFragment : DialogFragment() {
                 if (!ivm.isShownBtn) {
                     setGuideAnimation(binding.btnTIDSave, 1)
                     ivm.isShownBtn = true
-
                 }
                 binding.btnTIDSave.isEnabled = true
             } else {
                 binding.btnTIDSave.isEnabled = false
             }
-
         }
 
         binding.btnTIDSave.setOnSingleClickListener {
