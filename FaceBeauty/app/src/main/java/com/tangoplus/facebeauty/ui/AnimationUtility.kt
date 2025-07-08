@@ -45,7 +45,7 @@ object AnimationUtility {
             view.layoutParams.width = value
             view.requestLayout()
         }
-        anim.duration = 150
+        anim.duration = 300
         anim.addListener(object : AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: Animator) {
                 onEnd()

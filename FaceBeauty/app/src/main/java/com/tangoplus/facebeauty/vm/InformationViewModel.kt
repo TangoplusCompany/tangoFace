@@ -20,4 +20,28 @@ class InformationViewModel : ViewModel() {
     fun getSeqIndex() : Int {
         return currentSeqIndex
     }
+
+
+    private val ratioLines = listOf(DrawRatioLine.A_ALL, DrawRatioLine.A_VERTI, DrawRatioLine.A_HORIZON, DrawRatioLine.A_NONE)
+    private var currentRatioLine = DrawRatioLine.A_NONE
+    fun setRatioState() {
+        val currentIndex = ratioLines.indexOf(currentRatioLine)
+        val nextIndex = (currentIndex + 1) % ratioLines.size
+        currentRatioLine = ratioLines[nextIndex]
+    }
+    fun setAllOrNone() {
+        when (currentRatioLine) {
+            DrawRatioLine.A_NONE -> {
+                currentRatioLine = DrawRatioLine.A_ALL
+            }
+            else -> {
+                currentRatioLine = DrawRatioLine.A_NONE
+            }
+        }
+
+    }
+    fun getRatioState() : DrawRatioLine {
+        return currentRatioLine
+    }
+
 }

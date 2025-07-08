@@ -136,27 +136,27 @@ class MainViewModel : ViewModel() {
         faceStatics.forEach { faceStatic ->
             // 1. mediaFileUri를 Uri로 변환해서 추가
             try {
-                val imageUri = getImageUriFromFileName(context, faceStatic.mediaFileName)
+                val imageUri = getImageUriFromFileName(context, faceStatic.media_file_name)
 //                Log.v("imageUri있나요?", "$imageUri, ${faceStatic.mediaFileName} ${faceStatic.user_name}/${faceStatic.user_mobile}")
                 imageUris.add(imageUri)
             } catch (e: Exception) {
                 imageUris.add(null)
-                Log.e("FaceResultConverter", "이미지 URI 파싱 실패: ${faceStatic.mediaFileName}", e)
+                Log.e("FaceResultConverter", "이미지 URI 파싱 실패: ${faceStatic.media_file_name}", e)
             }
 
             // 2. jsonFileUri에서 JSON 파일 읽어서 JSONObject로 변환
             try {
-                val jsonUri = getJsonUriFromFileName(context, faceStatic.jsonFileName)
+                val jsonUri = getJsonUriFromFileName(context, faceStatic.json_file_name)
                 val jsonObject = jsonUri?.let { readJsonFromUri(context, it) }
 //                Log.v("jsonObject있나요?", "${faceStatic.jsonFileName} $jsonUri ${faceStatic.user_name}/${faceStatic.user_mobile}, $jsonObject")
                 jsonArray.put(jsonObject)
             } catch (e: Exception) {
-                Log.e("FaceResultConverter", "JSON 파일 읽기 실패: ${faceStatic.jsonFileName}", e)
+                Log.e("FaceResultConverter", "JSON 파일 읽기 실패: ${faceStatic.json_file_name}", e)
                 // 빈 JSONObject라도 추가해서 배열 순서 맞추기
                 jsonArray.put(JSONObject())
             }
         }
-
+        Log.v("results?", "${jsonArray.length()}, $jsonArray")
         return FaceResult(
             tempServerSn = faceStatics[0].temp_server_sn,
             userName = faceStatics[0].user_name,
@@ -167,9 +167,8 @@ class MainViewModel : ViewModel() {
         )
     }
 
-
     private fun convertToFaceResults(context: Context,  faceStaticList: List<FaceStatic>): List<FaceResult> {
-        // 현재 ViewModel에 있는 tempServerSn 목록 가져오기
+
         val existingTempServerSns = currentFaceResults.map { it.tempServerSn }.toSet()
 
         // temp_server_sn으로 그룹화하되, 이미 존재하는 것은 제외
@@ -197,7 +196,7 @@ class MainViewModel : ViewModel() {
         return _comparisonState.value ?: false
     }
 
-    var comparisonDoubleItem : Pair<FaceResult, FaceResult>? = null
+    var comparisonDoubleItem : Pair<FaceResult, FaceResult>? = null // null 일경우 1개 선택 한 상황 not null일 경우 비교상황
 
     private val _tempComparisonItems = MutableLiveData<MutableList<FaceDisplay>>(mutableListOf())
     val tempComparisonItems : LiveData<MutableList<FaceDisplay>> = _tempComparisonItems

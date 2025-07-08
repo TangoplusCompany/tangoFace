@@ -14,8 +14,8 @@ data class FaceStatic (
     var user_name: String = "",
     var user_mobile: String = "",
     var seq: Int  = 0,
-    var mediaFileName: String = "", // 확장자 까지
-    var jsonFileName: String = "", // 확장자 까지
+    var media_file_name: String = "", // 확장자 까지
+    var json_file_name: String = "", // 확장자 까지
     val reg_date: String? = getCurrentDateTime(),
 
     val resting_eye_horizontal_angle : Float = 0f,
@@ -42,12 +42,12 @@ data class FaceStatic (
 
 
     val jaw_left_tilt_nose_chin_vertical_angle : Float = 0f,
-    val jaw_left_tilt_tip_of_lips_horizontal_anngle : Float = 0f,
+    val jaw_left_tilt_tip_of_lips_horizontal_angle : Float = 0f,
     val jaw_left_tilt_left_mandibular_distance : Float = 0f,
     val jaw_left_tilt_right_mandibular_distance : Float = 0f,
 
     val jaw_right_tilt_nose_chin_vertical_angle : Float = 0f,
-    val jaw_right_tilt_tip_of_lips_horizontal_anngle : Float = 0f,
+    val jaw_right_tilt_tip_of_lips_horizontal_angle : Float = 0f,
     val jaw_right_tilt_left_mandibular_distance : Float = 0f,
     val jaw_right_tilt_right_mandibular_distance : Float = 0f,
 

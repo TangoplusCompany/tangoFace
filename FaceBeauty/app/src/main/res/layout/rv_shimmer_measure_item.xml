@@ -4,24 +4,25 @@
     android:id="@+id/clSMI"
     android:layout_width="match_parent"
     android:layout_height="128dp"
-    android:layout_marginStart="5dp"
-    android:layout_marginTop="5dp"
-    android:layout_marginEnd="5dp"
-    android:layout_marginBottom="5dp"
     android:background="@drawable/effect_20"
     android:backgroundTint="@color/subColor100">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_margin="10dp"
         android:background="@color/subColor100"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <View
             android:id="@+id/view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="7.5dp"
+            android:layout_marginEnd="10dp"
             android:layout_weight="1"
             android:background="@drawable/effect_20"
             android:backgroundTint="@color/subColor200" />
@@ -30,15 +31,7 @@
             android:id="@+id/view2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="7.5dp"
-            android:layout_weight="1"
-            android:background="@drawable/effect_20"
-            android:backgroundTint="@color/subColor200" />
-        <View
-            android:id="@+id/view3"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="7.5dp"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
             android:background="@drawable/effect_20"
             android:backgroundTint="@color/subColor200" />

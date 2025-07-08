@@ -7,27 +7,69 @@
     android:layout_height="wrap_content"
     android:background="@drawable/bckgnd_20">
 
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="0dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp"
+        android:background="@color/subColor100"
+        android:orientation="horizontal"
+        android:padding="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/llFSI">
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardView"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            app:cardBackgroundColor="#FB3535"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvFSIExplain"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+
+            android:layout_marginStart="10dp"
+            android:text="우측 볼근이 기장돼 있습니다 우측 관장놀이 주변을 마사지 하고 긴장을 풀어주세요"
+            android:textColor="@color/subColor400"
+            android:textSize="18dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/cardView"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <com.google.android.material.checkbox.MaterialCheckBox
         android:id="@+id/cbFSITitle"
         style="@style/CustomCheckBoxStyle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
         android:layout_marginTop="20dp"
         android:layout_weight="1"
         android:gravity="center"
         android:paddingStart="10dp"
-        android:text="코-입술 수직 각도"
+        android:text="코-입술"
         android:textColor="@color/black"
-        android:textSize="18dp"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:textSize="22dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
         android:id="@+id/linearLayout"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="20dp"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -38,9 +80,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:gravity="center"
+            android:gravity="center_vertical"
             android:text="안정 상태"
-            android:textColor="@color/subColor500"
+            android:textColor="@color/black"
             android:textSize="18dp" />
 
         <TextView
@@ -48,17 +90,20 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:gravity="center"
+            android:gravity="center_vertical"
             android:text="교합 상태"
-            android:textColor="@color/subColor500"
-            android:textSize="18dp" />
+            android:textColor="@color/black"
+            android:textSize="18dp"
+            android:visibility="visible" />
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/llFSI"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="20dp"
         android:layout_marginBottom="40dp"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -73,10 +118,10 @@
             android:layout_height="match_parent"
             android:layout_gravity="center"
             android:layout_weight="1.6"
-            android:gravity="center"
+            android:gravity="center_vertical"
             android:text="_"
             android:textColor="@color/black"
-            android:textSize="40dp" />
+            android:textSize="22dp" />
 
         <TextView
             android:id="@+id/tvFSI1"
@@ -84,10 +129,12 @@
             android:layout_height="match_parent"
             android:layout_gravity="center"
             android:layout_weight="1.6"
-            android:gravity="center"
+            android:gravity="center_vertical"
             android:text="_"
             android:textColor="@color/black"
-            android:textSize="40dp" />
+            android:textSize="22dp"
+            android:visibility="visible" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

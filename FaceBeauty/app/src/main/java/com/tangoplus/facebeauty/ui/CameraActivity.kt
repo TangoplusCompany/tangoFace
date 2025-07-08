@@ -32,6 +32,8 @@ import android.view.animation.AnimationSet
 import android.view.animation.TranslateAnimation
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.Camera
@@ -179,7 +181,21 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             }
         }
     } //  ------! 카운트 다운 끝 !-------
-
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions.all { it.value }) {
+            // 모든 권한이 허용됨
+            backgroundExecutor.execute {
+                if (faceLandmarkerHelper.isClose()) {
+                    faceLandmarkerHelper.setupFaceLandmarker()
+                }
+            }
+        } else {
+            // 권한이 거부됨
+            Toast.makeText(this, "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onResume() {
         super.onResume()
@@ -190,7 +206,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         // to the foreground.
         if (!isCameraActive) {
             if (!hasPermissions(this)) {
-                ActivityCompat.requestPermissions(this, getRequiredPermissions(), REQUEST_CODE_PERMISSIONS)
+                requestPermissionLauncher.launch(getRequiredPermissions())
             } else {
                 backgroundExecutor.execute {
                     if (faceLandmarkerHelper.isClose()) {
@@ -211,30 +227,31 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             viewModel.setMinFacePresenceConfidence(faceLandmarkerHelper.minFacePresenceConfidence)
             viewModel.setDelegate(faceLandmarkerHelper.currentDelegate)
         }
+        backgroundExecutor.execute { faceLandmarkerHelper.clearFaceLandmarker() }
     }
 
-    override fun onStop() {
-        super.onStop()
-        isCameraActive = false
-
-        // onStop에서만 실제 리소스 해제
-        if(this::faceLandmarkerHelper.isInitialized) {
-            try {
-                faceLandmarkerHelper.clearFaceLandmarker()
-            } catch (e: Exception) {
-                Log.e("CameraActivity", "Error clearing face landmarker: ${e.message}")
-            }
-        }
-
-        if(this::poseLandmarker.isInitialized) {
-            try {
-                poseLandmarker.clearPoseLandmarker()
-            } catch (e: Exception) {
-                Log.e("CameraActivity", "Error clearing pose landmarker: ${e.message}")
-            }
-        }
-        cameraProvider?.unbindAll()
-    }
+//    override fun onStop() {
+//        super.onStop()
+//        isCameraActive = false
+//
+//        // onStop에서만 실제 리소스 해제
+//        if(this::faceLandmarkerHelper.isInitialized) {
+//            try {
+//                faceLandmarkerHelper.clearFaceLandmarker()
+//            } catch (e: Exception) {
+//                Log.e("CameraActivity", "Error clearing face landmarker: ${e.message}")
+//            }
+//        }
+//
+//        if(this::poseLandmarker.isInitialized) {
+//            try {
+//                poseLandmarker.clearPoseLandmarker()
+//            } catch (e: Exception) {
+//                Log.e("CameraActivity", "Error clearing pose landmarker: ${e.message}")
+//            }
+//        }
+//        cameraProvider?.unbindAll()
+//    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -242,6 +259,10 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         if (!backgroundExecutor.isShutdown) {
             backgroundExecutor.shutdownNow()
         }
+        backgroundExecutor.shutdown()
+        backgroundExecutor.awaitTermination(
+            Long.MAX_VALUE, TimeUnit.NANOSECONDS
+        )
     }
     override fun onStart() {
         super.onStart()
@@ -340,7 +361,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     }
                     mergedJOBeforeFileName.add(mergedJSON)
                     val jsonPath = saveJsonToStorage(mergedJSON, mvm.staticFileNames[i].replace(".jpg", ""))
-                    mergedJOBeforeFileName[i].put("jsonFileName", jsonPath)
+                    mergedJOBeforeFileName[i].put("json_file_name", jsonPath)
                     mvm.mergedJA.put(mergedJOBeforeFileName[i])
                 }
 
@@ -556,7 +577,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 val horizontalLineVector = calculateAngle(leftEarPoint.x(), leftEarPoint.y(), noseTip.x(), noseTip.y(),rightEarPoint.x(), rightEarPoint.y())
                 val vertiBoolean = if (eyeDistanceGap < 0.275f) true else false
                 val horizonBoolean = if (seqStep.value == 5) {
-                    horizontalLineVector in 45f..85f
+                    horizontalLineVector in 50f..90f
                 } else {
                     horizontalLineVector in 110f..150f
                 }
@@ -953,7 +974,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 //                            Log.v("포즈 들가자", "${index} : (${calculateScreenX(targetLandmark.x()).roundToInt()}, ${calculateScreenY(targetLandmark.y()).roundToInt()}), 원본: (${tempLandmarks[index]?.first}, ${tempLandmarks[index]?.second})")
 //                        }
                     mvm.tempPlrJA.put(jo)
-                    mvm.currentPlrCoordinate.add(Pair(scaledX, scaledY)) // 33 개가 다 담김 // TODO 그냥 일단 다 담고 잘 되면 4개만 넣는 걸로
+                    mvm.currentPlrCoordinate.add(Pair(scaledX, scaledY)) // 33 개가 다 담김
                 }
                 // 마지막 자세만 값 저장
                 mvm.plrJA.put(mvm.tempPlrJA)
@@ -1184,7 +1205,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
                     val tempStatic = JSONObject().apply {
                         put("jaw_left_tilt_nose_chin_vertical_angle", tiltNoseChinAngle)
-                        put("jaw_left_tilt_tip_of_lips_horizontal_anngle", tiltTipOfLipsAngle)
+                        put("jaw_left_tilt_tip_of_lips_horizontal_angle", tiltTipOfLipsAngle)
                         put("jaw_left_tilt_left_mandibular_distance", mandibularDistance.second)
                         put("jaw_left_tilt_right_mandibular_distance", mandibularDistance.first)
 
@@ -1203,7 +1224,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
                     val tempStatic = JSONObject().apply {
                         put("jaw_right_tilt_nose_chin_vertical_angle", tiltNoseChinAngle)
-                        put("jaw_right_tilt_tip_of_lips_horizontal_anngle", tiltTipOfLipsAngle)
+                        put("jaw_right_tilt_tip_of_lips_horizontal_angle", tiltTipOfLipsAngle)
                         put("jaw_right_tilt_left_mandibular_distance", mandibularDistance.second)
                         put("jaw_right_tilt_right_mandibular_distance", mandibularDistance.first)
 
@@ -1226,7 +1247,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
                 }
                 5 -> {
-                    // TODO 이 값들은 전부 pose_landmark를 사용해야 함
+
                     val plr = mvm.currentPlrCoordinate
 
                     val shoulderHorizontalAngle = calculateSlope(plr[11].first , plr[11].second, plr[12].first, plr[12].second)
@@ -1272,7 +1293,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             isEnabled = true
             visibility = View.INVISIBLE
         }
-        binding.tvSeqCount.text = "1 / 4"
+        binding.tvSeqCount.text = "1 / 6"
         mvm.staticFileNames.clear()
 //        mvm.static1FileName = null
 //        mvm.mergedJson0 = JSONObject()
@@ -1316,8 +1337,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     private fun setJo(originJo : JSONObject, seq: Int) : JSONObject {
         return originJo.apply {
             put("temp_server_sn", prefsUtil.getLastTempServerSn())
-            put("mediaFileName", mvm.staticFileNames[seq])
-            put("jsonFileName", mvm.staticFileNames[seq].replace(".jpg", ".json"))
+            put("media_file_name", mvm.staticFileNames[seq])
+            put("json_file_name", mvm.staticFileNames[seq].replace(".jpg", ".json"))
             put("seq", seq)
             put("user_uuid", mvm.currentUUID)
             put("user_name", ivm.nameValue.value.toString())

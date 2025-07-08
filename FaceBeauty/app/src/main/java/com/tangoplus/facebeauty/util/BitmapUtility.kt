@@ -60,62 +60,61 @@ object BitmapUtility {
                 imageUri?.let { fragment.requireContext().contentResolver.openInputStream(it) }
             )
             fragment.lifecycleScope.launch(Dispatchers.Main) {
-                imageUri?.let { ImageSource.uri(it) }?.let { ssiv.setImage(it) }
+                if (!isSet) {
+                    val faceLandmarkResult = fromFaceCoordinates(faceCoordinates)
+                    val poseLandmarkResult = fromPoseCoordinates(poseCoordinates)
+                    Log.v("jsonData", "${jsonData.getJSONObject("data")}")
+                    val leftCheekValue = when (seq) {
+                        0 -> jsonData.getJSONObject("data").getDouble("resting_left_cheeks_extent")
+                        1 -> jsonData.getJSONObject("data").getDouble("occlusal_left_cheeks_extent")
+                        2 -> jsonData.getJSONObject("data").getDouble("jaw_left_tilt_left_mandibular_distance")
+                        3 -> jsonData.getJSONObject("data").getDouble("jaw_right_tilt_left_mandibular_distance")
+                        else -> 0.0
+                    }
+                    val rightCheekValue = when (seq) {
+                        0 -> jsonData.getJSONObject("data").getDouble("resting_right_cheeks_extent")
+                        1 -> jsonData.getJSONObject("data").getDouble("occlusal_right_cheeks_extent")
+                        2 -> jsonData.getJSONObject("data").getDouble("jaw_left_tilt_right_mandibular_distance")
+                        3 -> jsonData.getJSONObject("data").getDouble("jaw_right_tilt_right_mandibular_distance")
+                        else -> 0.0
+                    }
+                    val maxValue = max(leftCheekValue, rightCheekValue)
+                    val cheekDifferenceRatio = if (maxValue != 0.0) {
+                        abs(leftCheekValue - rightCheekValue) / maxValue
+                    } else {
+                        0.0 // 둘 다 0인 경우
+                    }.toFloat()
+                    val cheeksState = when {
+                        cheekDifferenceRatio > 0.2 && leftCheekValue > rightCheekValue -> -2
+                        cheekDifferenceRatio > 0.1 && leftCheekValue > rightCheekValue -> -1
+                        cheekDifferenceRatio > 0.2 && leftCheekValue < rightCheekValue -> 2
+                        cheekDifferenceRatio > 0.1 && leftCheekValue < rightCheekValue -> 1
+                        cheekDifferenceRatio <= 0.1 -> 0
+                        else -> 0
+                    }
+                    val combinedBitmap = combineImageAndOverlay(
+                        bitmap,
+                        faceLandmarkResult,
+                        poseLandmarkResult,
+                        ivm.currentCheckedLines,
+                        ivm.getRatioState(),
+                        ivm.currentFaceComparision,
+                        seq,
+                        cheeksState
+                    )
+
+                    isSet = true
+                    // 가로비율은 2배로 확대 세로 비율은 그대로 보여주기
+                    val upscaledBitmap = if (isZoomIn) upscaleImage(combinedBitmap, 1.3f) else combinedBitmap
+                    val isMirrored = createMirroredOverlayImage(upscaledBitmap, false)
+                    ssiv.setImage(ImageSource.bitmap(upscaledBitmap))
+                    ssiv.maxScale = 3.5f
+                    ssiv.minScale = 1f
+                    continuation.resume(true)
+                }
                 ssiv.setOnImageEventListener(object : SubsamplingScaleImageView.OnImageEventListener {
                     override fun onReady() {
-                        if (!isSet) {
-                            val faceLandmarkResult = fromFaceCoordinates(faceCoordinates)
-                            val poseLandmarkResult = fromPoseCoordinates(poseCoordinates)
-                            Log.v("jsonData", "${jsonData.getJSONObject("data")}")
-                            val leftCheekValue = when (seq) {
-                                0 -> jsonData.getJSONObject("data").getDouble("resting_left_cheeks_extent")
-                                1 -> jsonData.getJSONObject("data").getDouble("occlusal_left_cheeks_extent")
-                                2 -> jsonData.getJSONObject("data").getDouble("jaw_left_tilt_left_mandibular_distance")
-                                3 -> jsonData.getJSONObject("data").getDouble("jaw_right_tilt_left_mandibular_distance")
-                                else -> 0.0
-                            }
-                            val rightCheekValue = when (seq) {
-                                0 -> jsonData.getJSONObject("data").getDouble("resting_right_cheeks_extent")
-                                1 -> jsonData.getJSONObject("data").getDouble("occlusal_right_cheeks_extent")
-                                2 -> jsonData.getJSONObject("data").getDouble("jaw_left_tilt_right_mandibular_distance")
-                                3 -> jsonData.getJSONObject("data").getDouble("jaw_right_tilt_right_mandibular_distance")
-                                else -> 0.0
-                            }
-                            val maxValue = max(leftCheekValue, rightCheekValue)
-                            val cheekDifferenceRatio = if (maxValue != 0.0) {
-                                abs(leftCheekValue - rightCheekValue) / maxValue
-                            } else {
-                                0.0 // 둘 다 0인 경우
-                            }.toFloat()
-                            val cheeksState = when {
-                                cheekDifferenceRatio > 0.2 && leftCheekValue > rightCheekValue -> -2
-                                cheekDifferenceRatio > 0.1 && leftCheekValue > rightCheekValue -> -1
-                                cheekDifferenceRatio > 0.2 && leftCheekValue < rightCheekValue -> 2
-                                cheekDifferenceRatio > 0.1 && leftCheekValue < rightCheekValue -> 1
-                                cheekDifferenceRatio <= 0.1 -> 0
-                                else -> 0
-                            }
-                            val combinedBitmap = combineImageAndOverlay(
-                                bitmap,
-                                faceLandmarkResult,
-                                poseLandmarkResult,
-                                ivm.currentCheckedLines,
-                                ivm.currentFaceComparision,
-                                seq,
-                                cheeksState
-                            )
 
-                            isSet = true
-                            // 가로비율은 2배로 확대 세로 비율은 그대로 보여주기
-                            val upscaledBitmap = if (isZoomIn) upscaleImage(combinedBitmap, 1.3f) else combinedBitmap
-                            val isMirrored = createMirroredOverlayImage(upscaledBitmap, false)
-
-//                            val moareBitmap = setMoare(faceResult, seq, upscaledBitmap)
-                            ssiv.setImage(ImageSource.bitmap(upscaledBitmap))
-                            ssiv.maxScale = 3.5f
-                            ssiv.minScale = 1f
-                            continuation.resume(true)
-                        }
                     }
                     override fun onImageLoaded() {  }
                     override fun onPreviewLoadError(e: Exception?) { continuation.resume(false) }
@@ -144,7 +143,7 @@ object BitmapUtility {
         faceLandmarks: FaceLandmarkResult,
         poseLandmarks: PoseLandmarkResult,
         selectedData: MutableSet<DrawLine>,
-
+        ratioLine : DrawRatioLine,
         cfc : MutableList<FaceComparisonItem>,
         seq: Int,
         warningPoint: Int
@@ -349,7 +348,7 @@ object BitmapUtility {
         }
 
         // ----------------------------------# 비율 계산기 #------------------------------------
-        if (selectedData.contains(DrawLine.A_VERTI)) {
+        if (ratioLine == DrawRatioLine.A_ALL || ratioLine == DrawRatioLine.A_VERTI) {
             val leftFace = listOf(21, 162, 127, 234, 93, 132, 58)
             val rightFace = listOf(251, 390, 356, 454, 323, 361)
             val minLeftIndex = leftFace.minByOrNull { index -> faceLandmarks.landmarks[index].x }
@@ -386,7 +385,7 @@ object BitmapUtility {
             drawExtendedLine(canvas, x5, y5, x5, y5 + 1, 400f, 400f, axis300Paint)
 
         }
-        if (selectedData.contains(DrawLine.A_HORIZON)) {
+        if (ratioLine == DrawRatioLine.A_ALL || ratioLine == DrawRatioLine.A_HORIZON) {
             Log.v("비율Ratio", "${selectedData}")
             val glabella = faceLandmarks.landmarks[8]
             val subNazale = faceLandmarks.landmarks[2]

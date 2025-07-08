@@ -2,7 +2,6 @@ package com.tangoplus.facebeauty.ui
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,7 +13,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.skydoves.balloon.ArrowPositionRules
@@ -23,26 +21,15 @@ import com.skydoves.balloon.BalloonAnimation
 import com.skydoves.balloon.BalloonSizeSpec
 import com.skydoves.balloon.showAlignBottom
 import com.tangoplus.facebeauty.R
-import com.tangoplus.facebeauty.data.FaceResult
 import com.tangoplus.facebeauty.data.db.FaceDao
-import com.tangoplus.facebeauty.data.db.FaceDatabase
-import com.tangoplus.facebeauty.data.db.FaceStatic
 import com.tangoplus.facebeauty.databinding.FragmentMainBinding
 import com.tangoplus.facebeauty.ui.AnimationUtility.animateExpand
 import com.tangoplus.facebeauty.ui.adapter.MeasureRVAdapter
 import com.tangoplus.facebeauty.ui.view.GridSpacingItemDecoration
 import com.tangoplus.facebeauty.ui.listener.OnMeasureClickListener
-import com.tangoplus.facebeauty.util.FileUtility.getImageUriFromFileName
-import com.tangoplus.facebeauty.util.FileUtility.getJsonUriFromFileName
-import com.tangoplus.facebeauty.util.FileUtility.readJsonFromUri
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.vm.InputViewModel
 import com.tangoplus.facebeauty.vm.MainViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
 import androidx.core.view.isVisible
 import com.tangoplus.facebeauty.data.FaceDisplay
 import com.tangoplus.facebeauty.ui.view.StickyHeaderItemDecoration
@@ -78,7 +65,7 @@ class MainFragment : Fragment(), OnMeasureClickListener {
 
             if (isLoaded == true) {
                 Log.v("displayList", "${mvm.displayList.value}")
-                // ✅ 데이터 로드 완료 후 UI 처리
+
                 if (mvm.isMeasureFinish) {
                     mvm.currentResult.value = mvm.currentFaceResults.firstOrNull()
                     val infoDialog = InformationDialogFragment()
@@ -92,6 +79,12 @@ class MainFragment : Fragment(), OnMeasureClickListener {
                 setAdapter(mvm.displayList.value ?: listOf(), 2)
 
                 mvm.dataLoadComplete.value = false
+
+                if (mvm.currentFaceResults.size == 0) {
+                    bd.ivMEmpty.visibility = View.VISIBLE
+                } else {
+                    bd.ivMEmpty.visibility = View.GONE
+                }
             }
         }
 
@@ -109,36 +102,37 @@ class MainFragment : Fragment(), OnMeasureClickListener {
 
     private fun setAdapter(data: List<FaceDisplay>, spanCount : Int) {
         bd.rvM1.apply {
+//            while (itemDecorationCount > 0 ) removeItemDecorationAt(0)
+            val measureAdapter = MeasureRVAdapter(requireContext(), data, mvm)
+            measureAdapter.measureClickListener = this@MainFragment
+
             // 페이드 아웃 애니메이션
             animate()
                 .alpha(0f)
-                .setDuration(100)
+                .setDuration(250)
                 .setListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator) {
                         // 기존 decoration 제거
-                        while (itemDecorationCount > 0) {
-                            removeItemDecorationAt(0)
-                        }
+//                        val spacingPx = (5 * resources.displayMetrics.density).toInt() // 아이템 간 간격
+//                        addItemDecoration(GridSpacingItemDecoration(spanCount, spacingPx, true))
 
-                        val spacingPx = (5 * resources.displayMetrics.density).toInt() // 아이템 간 간격
-                        addItemDecoration(GridSpacingItemDecoration(spanCount, spacingPx, true))
-                        val measureAdapter = MeasureRVAdapter(requireContext(), data, mvm)
-
-                        measureAdapter.measureClickListener = this@MainFragment
                         layoutManager = GridLayoutManager(requireContext(), spanCount)
                         adapter = measureAdapter
-                        Log.v("어댑터데이터", "${mvm.currentFaceResults}")
-
+//                        Log.v("어댑터데이터", "${mvm.currentFaceResults}")
                         // 페이드 인 애니메이션
                         animate()
                             .alpha(1f)
-                            .setDuration(100)
+                            .setDuration(250)
                             .setListener(null)
                             .start()
+
+
                     }
                 })
                 .start()
+//            Log.v("어댑터데이터", "${mvm.currentFaceResults}")
         }
+
     }
 
 //    private fun getUserListByDB() {
@@ -200,7 +194,7 @@ class MainFragment : Fragment(), OnMeasureClickListener {
             }
 
             if (mvm.tempComparisonItems.value?.size == 2 && bd.btnMComparision.text == "결과 보기") {
-                val sortedTempItems = mvm.tempComparisonItems.value?.sortedByDescending { it.regDate }
+                val sortedTempItems = mvm.tempComparisonItems.value?.sortedBy { it.regDate }
 
                 // 왼쪽 오른쪽 찾아서 DOUBLE 만들기
                 val leftResult = mvm.currentFaceResults.find { it.tempServerSn == sortedTempItems?.get(0)?.tempServerSn }
@@ -270,8 +264,6 @@ class MainFragment : Fragment(), OnMeasureClickListener {
 
             if (it.size == 2) {
                 bd.btnMComparision.text = "결과 보기"
-                Log.v("버튼풀림0", "${it[0]}")
-                Log.v("버튼풀림1", "${it[1]}")
             } else {
                 bd.btnMComparision.text = "취소"
             }
@@ -282,16 +274,19 @@ class MainFragment : Fragment(), OnMeasureClickListener {
         bd.ibtnMNavi.setOnSingleClickListener {
             if (bd.clMNavi.isVisible) {
                 // 숨기기
-                animateExpand(requireContext(), bd.clMNavi, false) {
+
+                animateExpand(requireContext(), bd.clMNavi,   false) {
                     bd.clMNavi.visibility = View.GONE
                     bd.etMSearch.setText("")
-                    mvm.displayList.value?.let { it1 -> setAdapter(it1,3) }
+                    mvm.displayList.value?.let {
+                        it1 -> setAdapter(it1,4)
+                    }
                 }
             } else {
                 // 보이기
                 bd.clMNavi.visibility = View.VISIBLE
                 animateExpand(requireContext(), bd.clMNavi, true) {
-                    mvm.displayList.value?.let { it1 -> setAdapter(it1,3) }
+                    mvm.displayList.value?.let { it1 -> setAdapter(it1,2) }
                 }
             }
         }
@@ -415,7 +410,7 @@ class MainFragment : Fragment(), OnMeasureClickListener {
     override fun onMeasureClick(tempServerSn: Int) {
         mvm.currentResult.value = mvm.currentFaceResults.find { it.tempServerSn == tempServerSn }
 //        scrollToView(bd.ibtnMBack, bd.nsvM)
-
+        Log.v("currentValue", "${mvm.currentResult.value}")
         val infoDialog = InformationDialogFragment()
         infoDialog.show(requireActivity().supportFragmentManager, null)
     }

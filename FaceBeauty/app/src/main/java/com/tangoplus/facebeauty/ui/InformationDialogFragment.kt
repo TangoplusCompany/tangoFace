@@ -18,6 +18,7 @@ import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.data.DrawLine
 import com.tangoplus.facebeauty.data.DrawRatioLine
 import com.tangoplus.facebeauty.data.FaceComparisonItem
+import com.tangoplus.facebeauty.data.FaceResult
 import com.tangoplus.facebeauty.data.db.FaceStatic
 import com.tangoplus.facebeauty.databinding.FragmentInformationDialogBinding
 import com.tangoplus.facebeauty.ui.adapter.FaceStaticRVAdapter
@@ -31,8 +32,9 @@ import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
 import com.tangoplus.facebeauty.util.MathHelpers.calculateRatios
 import com.tangoplus.facebeauty.vm.InformationViewModel
 import com.tangoplus.facebeauty.vm.MainViewModel
-import com.tangoplus.facebeauty.vm.MeasureViewModel
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 
 
 class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
@@ -49,6 +51,11 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         bd = FragmentInformationDialogBinding.inflate(inflater)
         return bd.root
     }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        mvm.comparisonDoubleItem = null
+    }
+
     override fun onResume() {
         super.onResume()
         // full Screen code
@@ -67,12 +74,13 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         // double확인해서 비교인지 상세보기인지 판단
         if (mvm.comparisonDoubleItem != null) {
             setComparisonButtons()
+            setComparisonUI()
         } else {
             setDetailButtons()
+            setUserInfo()
         }
         setResult()
-        setUserInfo()
-
+        setRatioBtn()
     }
 
     override fun onFaceStaticCheck(drawLineIndex: Int, isChecked: Boolean) {
@@ -99,8 +107,17 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
     }
 
     private fun setRatioBtn() {
-        // TODO 라티오는 따로 뺴버리기 -> 정면에서만 켜지게끔 -> 아니면 자동 off
-        bd.btnIDRatio.setOnSingleClickListener {  }
+        bd.btnIDRatio.setOnSingleClickListener {
+            ivm.setRatioState()
+            ivm.getRatioState()
+            setImage()
+        }
+        bd.btnIDRatio.setOnLongClickListener {
+            ivm.setAllOrNone()
+            ivm.getRatioState()
+            setImage()
+            true
+        }
     }
 
 
@@ -201,29 +218,146 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                 else ivm.currentCheckedRatioLines.remove(DrawRatioLine.A_HORIZON)
             }
         }
-        Log.v("비율이미지", "${ivm.currentCheckedRatioLines}")
         setImage()
     }
+
+    private fun buildFaceComparisonList(isComparison: Boolean, leftJA: JSONArray?, rightJA: JSONArray?): List<FaceComparisonItem>? {
+
+        val (leftSeq, rightSeq) = if (!isComparison) {
+            when (ivm.getSeqIndex()) {
+                0 -> 0 to 1
+                1 -> 2 to 3
+                else -> 4 to 5
+            }
+        } else {
+            ivm.getSeqIndex() to ivm.getSeqIndex()
+        }
+        Log.v("seq봐", "$leftJA")
+        Log.v("seq봐", "$rightJA")
+        Log.v("seq봐", "$leftSeq, $rightSeq")
+        if (leftJA != null && rightJA != null) {
+            val leftValue = leftJA.getJSONObject(leftSeq).getJSONObject("data")
+            val rightValue = rightJA.getJSONObject(rightSeq).getJSONObject("data")
+            return if (isComparison) {
+                when (ivm.getSeqIndex()) {
+                    0 -> {
+                        listOf(
+                            FaceComparisonItem("양쪽 눈", leftValue.getDouble("resting_eye_horizontal_angle").toFloat(), rightValue.getDouble("resting_eye_horizontal_angle").toFloat()),
+                            FaceComparisonItem("양쪽 눈썹", leftValue.getDouble("resting_eyebrow_horizontal_angle").toFloat(), rightValue.getDouble("resting_eyebrow_horizontal_angle").toFloat()),
+                            FaceComparisonItem("양쪽 입술", leftValue.getDouble("resting_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("resting_tip_of_lips_horizontal_angle").toFloat()),
+                            FaceComparisonItem("턱 끝", leftValue.getDouble("resting_tip_of_chin_horizontal_angle").toFloat(), rightValue.getDouble("resting_tip_of_chin_horizontal_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 눈매 - 입술 끝", leftValue.getDouble("resting_canthus_oral_left_vertical_angle").toFloat(), rightValue.getDouble("resting_canthus_oral_left_vertical_angle").toFloat()),
+
+                            FaceComparisonItem("오른쪽 눈매 - 입술 끝", leftValue.getDouble("resting_canthus_oral_right_vertical_angle").toFloat(), rightValue.getDouble("resting_canthus_oral_right_vertical_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 코끝 - 입술 끝", leftValue.getDouble("resting_nasal_wing_tip_of_lips_left_vertical_angle").toFloat(), rightValue.getDouble("resting_nasal_wing_tip_of_lips_left_vertical_angle").toFloat()),
+                            FaceComparisonItem("오른쪽 코끝 - 입술 끝", leftValue.getDouble("resting_nasal_wing_tip_of_lips_right_vertical_angle").toFloat(), rightValue.getDouble("resting_nasal_wing_tip_of_lips_right_vertical_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 볼 너비", leftValue.getDouble("resting_left_cheeks_extent").toFloat(), rightValue.getDouble("resting_left_cheeks_extent").toFloat()),
+                            FaceComparisonItem("오른쪽 볼 너비", leftValue.getDouble("resting_right_cheeks_extent").toFloat(), rightValue.getDouble("resting_right_cheeks_extent").toFloat()),
+                        )
+                    }
+                    1 -> {
+                        listOf(
+                            FaceComparisonItem("양쪽 눈", leftValue.getDouble("occlusal_eye_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eye_horizontal_angle").toFloat()),
+                            FaceComparisonItem("양쪽 눈썹", leftValue.getDouble("occlusal_eyebrow_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eyebrow_horizontal_angle").toFloat()),
+                            FaceComparisonItem("양쪽 입술", leftValue.getDouble("occlusal_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_tip_of_lips_horizontal_angle").toFloat()),
+                            FaceComparisonItem("턱 끝", leftValue.getDouble("occlusal_tip_of_chin_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_tip_of_chin_horizontal_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 눈매 - 입술 끝", leftValue.getDouble("occlusal_canthus_oral_left_vertical_angle").toFloat(), rightValue.getDouble("occlusal_canthus_oral_left_vertical_angle").toFloat()),
+                            FaceComparisonItem("오른쪽 눈매 - 입술 끝", leftValue.getDouble("occlusal_canthus_oral_right_vertical_angle").toFloat(), rightValue.getDouble("occlusal_canthus_oral_right_vertical_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 코끝 - 입술 끝", leftValue.getDouble("occlusal_nasal_wing_tip_of_lips_left_vertical_angle").toFloat(), rightValue.getDouble("occlusal_nasal_wing_tip_of_lips_left_vertical_angle").toFloat()),
+                            FaceComparisonItem("오른쪽 코끝 - 입술 끝", leftValue.getDouble("occlusal_nasal_wing_tip_of_lips_right_vertical_angle").toFloat(), rightValue.getDouble("occlusal_nasal_wing_tip_of_lips_right_vertical_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 볼 너비", leftValue.getDouble("occlusal_left_cheeks_extent").toFloat(), rightValue.getDouble("occlusal_left_cheeks_extent").toFloat()),
+                            FaceComparisonItem("오른쪽 볼 너비", leftValue.getDouble("occlusal_right_cheeks_extent").toFloat(), rightValue.getDouble("occlusal_right_cheeks_extent").toFloat()),
+                        )
+                    }
+                    2 -> {
+                        listOf(
+                            FaceComparisonItem("코 - 턱", leftValue.getDouble("jaw_left_tilt_nose_chin_vertical_angle").toFloat(), rightValue.getDouble("jaw_left_tilt_nose_chin_vertical_angle").toFloat()),
+                            FaceComparisonItem("양 입술", leftValue.getDouble("jaw_left_tilt_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("jaw_left_tilt_tip_of_lips_horizontal_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_left_mandibular_distance").toFloat(), rightValue.getDouble("jaw_left_tilt_left_mandibular_distance").toFloat()),
+                            FaceComparisonItem("오른쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_right_mandibular_distance").toFloat(), rightValue.getDouble("jaw_left_tilt_right_mandibular_distance").toFloat()),
+                        )
+                    }
+                    3 -> {
+                        listOf(
+                            FaceComparisonItem("코 - 턱", leftValue.getDouble("jaw_right_tilt_nose_chin_vertical_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_nose_chin_vertical_angle").toFloat()),
+                            FaceComparisonItem("양 입술", leftValue.getDouble("jaw_right_tilt_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_tip_of_lips_horizontal_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 중간 턱", leftValue.getDouble("jaw_right_tilt_left_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_left_mandibular_distance").toFloat()),
+                            FaceComparisonItem("오른쪽 중간 턱", leftValue.getDouble("jaw_right_tilt_right_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_right_mandibular_distance").toFloat()),
+                        )
+                    }
+                    4 -> {
+                        listOf(
+                            FaceComparisonItem("입 높이", leftValue.getDouble("jaw_opening_lips_distance").toFloat(), rightValue.getDouble("jaw_opening_lips_distance").toFloat()),
+                            FaceComparisonItem("입 각도", leftValue.getDouble("jaw_opening_lips_vertical_angle").toFloat(), rightValue.getDouble("jaw_opening_lips_vertical_angle").toFloat()),
+                        )
+                    }
+                    else -> {
+                        listOf(
+                            FaceComparisonItem("양 어깨", leftValue.getDouble("neck_extention_shoulder_horizontal_angle").toFloat(), rightValue.getDouble("neck_extention_shoulder_horizontal_angle").toFloat()),
+                            FaceComparisonItem("양 귀", leftValue.getDouble("neck_extention_ear_horizontal_angle").toFloat(), rightValue.getDouble("neck_extention_ear_horizontal_angle").toFloat()),
+                            FaceComparisonItem("목 각도", leftValue.getDouble("neck_extention_neck_vertical_angle").toFloat(), rightValue.getDouble("neck_extention_neck_vertical_angle").toFloat()),
+
+                            )
+                    }
+                }
+            } else {
+                when (ivm.getSeqIndex()) {
+                    0 -> {
+                        listOf(
+                            FaceComparisonItem("양쪽 눈", leftValue.getDouble("resting_eye_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eye_horizontal_angle").toFloat()),
+                            FaceComparisonItem("양쪽 눈썹", leftValue.getDouble("resting_eyebrow_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eyebrow_horizontal_angle").toFloat()),
+                            FaceComparisonItem("양쪽 입술", leftValue.getDouble("resting_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_tip_of_lips_horizontal_angle").toFloat()),
+                            FaceComparisonItem("턱 끝", leftValue.getDouble("resting_tip_of_chin_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_tip_of_chin_horizontal_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 눈매 - 입술 끝", leftValue.getDouble("resting_canthus_oral_left_vertical_angle").toFloat(), rightValue.getDouble("occlusal_canthus_oral_left_vertical_angle").toFloat()),
+                            FaceComparisonItem("오른쪽 눈매 - 입술 끝", leftValue.getDouble("resting_canthus_oral_right_vertical_angle").toFloat(), rightValue.getDouble("occlusal_canthus_oral_right_vertical_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 코끝 - 입술 끝", leftValue.getDouble("resting_nasal_wing_tip_of_lips_left_vertical_angle").toFloat(), rightValue.getDouble("occlusal_nasal_wing_tip_of_lips_left_vertical_angle").toFloat()),
+                            FaceComparisonItem("오른쪽 코끝 - 입술 끝", leftValue.getDouble("resting_nasal_wing_tip_of_lips_right_vertical_angle").toFloat(), rightValue.getDouble("occlusal_nasal_wing_tip_of_lips_right_vertical_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 볼 너비", leftValue.getDouble("resting_left_cheeks_extent").toFloat(), rightValue.getDouble("occlusal_left_cheeks_extent").toFloat()),
+                            FaceComparisonItem("오른쪽 볼 너비", leftValue.getDouble("resting_right_cheeks_extent").toFloat(), rightValue.getDouble("occlusal_right_cheeks_extent").toFloat()),
+                        )
+                    }
+                    1 -> {
+                        listOf(
+                            FaceComparisonItem("코 - 턱", leftValue.getDouble("jaw_left_tilt_nose_chin_vertical_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_nose_chin_vertical_angle").toFloat()),
+                            FaceComparisonItem("양 입술", leftValue.getDouble("jaw_left_tilt_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_tip_of_lips_horizontal_angle").toFloat()),
+                            FaceComparisonItem("왼쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_left_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_left_mandibular_distance").toFloat()),
+                            FaceComparisonItem("오른쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_right_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_right_mandibular_distance").toFloat()),
+                        )
+                    }
+                    else -> {
+                        listOf(
+                            FaceComparisonItem("입 높이", leftValue.getDouble("jaw_opening_lips_distance").toFloat(), 0f),
+                            FaceComparisonItem("입 각도", leftValue.getDouble("jaw_opening_lips_vertical_angle").toFloat(), 0f),
+                            FaceComparisonItem("양 어깨", leftValue.getDouble("neck_extention_shoulder_horizontal_angle").toFloat(), 0f),
+                            FaceComparisonItem("양 귀", leftValue.getDouble("neck_extention_ear_horizontal_angle").toFloat(), 0f),
+                            FaceComparisonItem("목 각도", leftValue.getDouble("neck_extention_neck_vertical_angle").toFloat(), 0f),
+                        )
+                    }
+                }
+            }
+        }
+        return  null
+    }
+
     private fun setResult() {
         bd.ssiv1.recycle()
         bd.ssiv2.recycle()
-
-        // 비교인지 확인 TODO 여기서 데이터 확인한 후 보내야 함 3분할일지?
+        Log.v("setResult", "setResult started")
         if (mvm.comparisonDoubleItem != null) {
-
-        } else {
-            val faceStaticJson0 = mvm.currentResult.value?.results?.getJSONObject(0)?.getJSONObject("data")
-            val faceStatic0 = faceStaticJson0.toFaceStatic()
-            Log.v("스태틱가져오기", "0: $faceStaticJson0")
-            val faceStaticJson1 = mvm.currentResult.value?.results?.getJSONObject(1)?.getJSONObject("data")
-            val faceStatic1 = faceStaticJson1.toFaceStatic()
-            Log.v("스태틱가져오기", "1: $faceStaticJson1")
-
-            ivm.currentFaceComparision = buildFaceComparisonList(faceStatic0, faceStatic1).toMutableList()
-            ivm.currentFaceComparision.apply {
-//            add(0, FaceComparisonItem("", 0f, 0f, type = RVItemType.TITLE))
-//            add(0, FaceComparisonItem("", 0f, 0f, type = RVItemType.TITLE))
+            val leftResult = mvm.comparisonDoubleItem?.first
+            val rightResult = mvm.comparisonDoubleItem?.second
+            val result = buildFaceComparisonList(true, leftResult?.results, rightResult?.results)?.toMutableList()
+            if (result != null) {
+                ivm.currentFaceComparision = result
             }
+        } else {
+            val faceStaticJson = mvm.currentResult.value?.results
+            val result = buildFaceComparisonList(false, faceStaticJson, faceStaticJson)?.toMutableList()
+            if (result != null) {
+                ivm.currentFaceComparision = result
+            }
+            Log.v("setResult", "result: $result")
+
         }
         Log.v("staticDatas", "${ivm.currentFaceComparision}")
 
@@ -274,21 +408,6 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         setRatioCheckSwitch()
     }
 
-    fun buildFaceComparisonList(resting: FaceStatic, occlusal: FaceStatic): List<FaceComparisonItem> {
-        return listOf(
-            FaceComparisonItem("눈 수평 각도", resting.resting_eye_horizontal_angle, occlusal.occlusal_eye_horizontal_angle),
-//            FaceComparisonItem("귓바퀴 수평 각도", resting.resting_earflaps_horizontal_angle, occlusal.occlusal_earflaps_horizontal_angle),
-            FaceComparisonItem("입술 끝 수평 각도", resting.resting_tip_of_lips_horizontal_angle, occlusal.occlusal_tip_of_lips_horizontal_angle),
-//            FaceComparisonItem("미간-코 수직 각도", resting.resting_glabella_nose_vertical_angle, occlusal.occlusal_glabella_nose_vertical_angle),
-//            FaceComparisonItem("코-턱 수직 각도", resting.resting_nose_chin_vertical_angle, occlusal.occlusal_nose_chin_vertical_angle),
-//            FaceComparisonItem("좌측 귓바퀴-콧망울 수평 각도", resting.resting_left_earflaps_nasal_wing_horizontal_angle, occlusal.occlusal_left_earflaps_nasal_wing_horizontal_angle),
-//            FaceComparisonItem("우측 귓바퀴-콧망울 수평 각도", resting.resting_right_earflaps_nasal_wing_horizontal_angle, occlusal.occlusal_right_earflaps_nasal_wing_horizontal_angle),
-//            FaceComparisonItem("좌측 귓바퀴-코 거리", resting.resting_left_earflaps_nose_distance, occlusal.occlusal_left_earflaps_nose_distance),
-//            FaceComparisonItem("우측 귓바퀴-코 거리", resting.resting_right_earflaps_nose_distance, occlusal.occlusal_right_earflaps_nose_distance),
-//            FaceComparisonItem("좌측 입꼬리-입술 중앙 거리", resting.resting_left_tip_of_lips_center_lips_distance, occlusal.occlusal_left_tip_of_lips_center_lips_distance),
-//            FaceComparisonItem("우측 입꼬리-입술 중앙 거리", resting.resting_right_tip_of_lips_center_lips_distance, occlusal.occlusal_right_tip_of_lips_center_lips_distance),
-        )
-    }
     private fun setImage() {
         val seqIndex = ivm.getSeqIndex()
         val isDoubleMode = mvm.comparisonDoubleItem != null
@@ -308,16 +427,29 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                 mvm.comparisonDoubleItem?.let { (left, right) ->
                     setImage(this@InformationDialogFragment, left, leftSeq, bd.ssiv1, ivm)
                     setImage(this@InformationDialogFragment, right, rightSeq, bd.ssiv2, ivm)
+                    bd.tvIdDate1.apply {
+                        visibility = View.VISIBLE
+                        text = left.regDate?.substring(0, 11)
+                    }
+                    bd.tvIdDate2.apply {
+                        visibility = View.VISIBLE
+                        text = right.regDate?.substring(0, 11)
+                    }
+
                 }
+
             } else {
                 mvm.currentResult.value?.let { result ->
                     // value가 한 번만 호출되고 재사용됨
                     setImage(this@InformationDialogFragment, result, leftSeq, bd.ssiv1, ivm)
                     setImage(this@InformationDialogFragment, result, rightSeq, bd.ssiv2, ivm)
                 }
-            }
-        }
+                bd.tvIdDate1.visibility = View.GONE
+                bd.tvIdDate2.visibility = View.GONE
 
+            }
+            bd.btnIDRatio.visibility = View.VISIBLE
+        }
     }
 
     private fun setLinesInImage(switchedOn: Boolean) {
@@ -368,11 +500,8 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                         ivm.currentCheckedLines.add(DrawLine.A_EAR)
                         ivm.currentCheckedLines.add(DrawLine.A_NECK)
                     }
-
                 }
             }
-            ivm.currentCheckedLines.add(DrawLine.A_VERTI)
-            ivm.currentCheckedLines.add(DrawLine.A_HORIZON)
         } else {
             ivm.currentCheckedLines.clear()
         }
@@ -394,6 +523,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
             true
         }
     }
+
     private fun setComparisonButtons() {
         bd.llIDBottom.visibility = View.VISIBLE
         bd.divIDHorizon.visibility = View.VISIBLE
@@ -415,8 +545,13 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                     ))
                 }
                 setImage()
+                setResult()
             }
         }
+    }
+
+    private fun setComparisonUI() {
+        bd.tvIdInfo.visibility = View.GONE
     }
 
     private fun setDetailButtons() {
@@ -446,8 +581,8 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                         )
                     )
                 }
-
                 setImage()
+                setResult()
             }
         }
     }

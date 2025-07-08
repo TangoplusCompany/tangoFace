@@ -75,7 +75,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="15dp"
-            android:layout_marginTop="86dp"
+            android:layout_marginTop="96dp"
             android:text="기록 검색"
             android:textColor="@color/black"
             android:textSize="20dp"
@@ -174,6 +174,18 @@
             android:background="@color/subColor100"
             android:visibility="visible">
 
+            <ImageView
+                android:id="@+id/ivMEmpty"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:src="@drawable/drawable_empty"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHeight_percent="0.35"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
             <ImageButton
                 android:id="@+id/ibtnMNavi"
                 android:layout_width="wrap_content"
@@ -191,9 +203,9 @@
                 android:id="@+id/sflM"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="40dp"
+                android:layout_marginStart="30dp"
                 android:layout_marginTop="20dp"
-                android:layout_marginEnd="40dp"
+                android:layout_marginEnd="30dp"
                 android:visibility="visible"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -225,6 +237,7 @@
                 android:layout_marginStart="30dp"
                 android:layout_marginTop="20dp"
                 android:layout_marginEnd="30dp"
+                android:visibility="visible"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/sflM" />

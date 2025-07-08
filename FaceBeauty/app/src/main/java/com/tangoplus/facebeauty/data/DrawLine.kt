@@ -1,8 +1,6 @@
 package com.tangoplus.facebeauty.data
 
 enum class DrawLine {
-    A_VERTI,
-    A_HORIZON,
     A_CANTHUS_ORAL,
     A_NASALWINGS_ORAL,
     E_CHEEKS,
