@@ -14,11 +14,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 object MathHelpers {
-    private var SCALE_X = 1f
-    private const val SCALE_Y = 38f
+    private var SCALE_FACTOR = 1f
 
-    fun setScaleX(scale: Float) {
-        SCALE_X = scale
+    fun setScaleFactor(scale: Float) {
+        SCALE_FACTOR = scale
     }
 
     // ------# 기울기 계산 #------
@@ -52,7 +51,7 @@ object MathHelpers {
             val (x2, y2) = points[(i + 1) % n]  // 마지막 점은 첫 번째와 연결
             sum += (x1 * y2) - (x2 * y1)
         }
-        return abs(sum) / 2.0f
+        return (abs(sum) / 2.0f) / 1000f
     }
     // ------# 보정 값 계산 #-------
     fun correctingValue (OGValue : Float, correctionValue: Float) : Float {
@@ -80,38 +79,48 @@ object MathHelpers {
         val angleRadians = acos(cosTheta)
         return toDegrees(angleRadians.toDouble()).toFloat()
     }
-    private fun getDistanceX(point1: Pair<Float, Float>, point2: Pair<Float, Float>): Float {
-        return abs(point2.first - point1.first)
+//    private fun getDistanceX(point1: Pair<Float, Float>, point2: Pair<Float, Float>): Float {
+//        return abs(point2.first - point1.first)
+//    }
+//
+//    // Y축 거리 계산
+//    private fun getDistanceY(point1: Pair<Float, Float>, point2: Pair<Float, Float>): Float {
+//        return abs(point2.second - point1.second)
+//    }
+//
+//    fun getRealDistanceX(point1: Pair<Float, Float>, point2: Pair<Float, Float>) : Float {
+//        val normalizedDistance = getDistanceX(point1, point2)
+//        return normalizedToRealDistance(normalizedDistance,true)
+//    }
+//
+//    fun getRealDistanceY(point1: Pair<Float, Float>, point2: Pair<Float, Float>) : Float {
+//        val normalizedDistance = getDistanceY(point1, point2)
+//        return normalizedToRealDistance(normalizedDistance,  false)
+//    }
+//
+//    private fun normalizedToRealDistance(
+//        normalizedDistance: Float,
+//        isXAxis: Boolean = true
+//    ): Float {
+//        return if (isXAxis) {
+//            normalizedDistance * SCALE_X
+//        } else {
+//            normalizedDistance * SCALE_Y
+//        }
+//    }
+
+    // 두 점의 거리 계산
+    fun getNormalizedDistance(point1: Pair<Float, Float>, point2: Pair<Float, Float>, isScaled : Boolean = false): Float {
+        val deltaX = point2.first - point1.first
+        val deltaY = point2.second - point1.second
+        return sqrt(deltaX.pow(2) + deltaY.pow(2)) * if (!isScaled) SCALE_FACTOR else 1f
     }
 
-    // Y축 거리 계산
-    private fun getDistanceY(point1: Pair<Float, Float>, point2: Pair<Float, Float>): Float {
-        return abs(point2.second - point1.second)
-    }
 
-    fun getRealDistanceX(point1: Pair<Float, Float>, point2: Pair<Float, Float>) : Float {
-        val normalizedDistance = getDistanceX(point1, point2)
-        return normalizedToRealDistance(normalizedDistance,true)
-    }
 
-    fun getRealDistanceY(point1: Pair<Float, Float>, point2: Pair<Float, Float>) : Float {
-        val normalizedDistance = getDistanceY(point1, point2)
-        return normalizedToRealDistance(normalizedDistance,  false)
-    }
-
-    private fun normalizedToRealDistance(
-        normalizedDistance: Float,
-        isXAxis: Boolean = true
-    ): Float {
-        return if (isXAxis) {
-            normalizedDistance * SCALE_X
-        } else {
-            normalizedDistance * SCALE_Y
-        }
-    }
-
-    fun calculateScaleFromPart(relativeDistance: Float, realPupilLength: Float = 5.5f): Float {
+    fun calculateScaleFromPart(relativeDistance: Float, realPupilLength: Float = 6.5f): Float {
         if (relativeDistance <= 0f) return 0f // 잘못된 값 방어
+        // 6.5cm 눈 사이 거리
         return realPupilLength / relativeDistance
     }
 

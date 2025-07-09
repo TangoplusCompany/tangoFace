@@ -22,7 +22,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/ssiv1">
+            app:layout_constraintTop_toBottomOf="@+id/cardView2">
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
@@ -209,6 +209,7 @@
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/msGD"
+                        style="@style/CustomSwitchStyle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="10dp"
@@ -216,11 +217,10 @@
                         android:text="전체 각도 보기"
                         android:textColor="@color/black"
                         android:textSize="18dp"
-                        style="@style/CustomSwitchStyle"
-                        app:layout_constraintBottom_toBottomOf="@+id/tvIdInfo"
+                        app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toEndOf="@+id/tvIdInfo"
-                        app:layout_constraintTop_toTopOf="@+id/tvIdInfo"
+                        app:layout_constraintTop_toTopOf="parent"
                         app:trackDecorationTint="@color/tint_black_100"
                         app:trackTint="@color/tint_black_100"
                         app:useMaterialThemeColors="false" />
@@ -335,29 +335,45 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.core.widget.NestedScrollView>
 
-        <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
-            android:id="@+id/ssiv1"
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardView2"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginStart="10dp"
+            app:cardBackgroundColor="#00FFFFFF"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.0"
-            app:layout_constraintWidth_percent="0.5" />
+            app:layout_constraintWidth_percent="0.487">
 
-        <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
-            android:id="@+id/ssiv2"
+            <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
+                android:id="@+id/ssiv1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginEnd="10dp"
+            app:cardBackgroundColor="#00FFFFFF"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="1.0"
-            app:layout_constraintStart_toStartOf="@+id/ssiv1"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.0"
-            app:layout_constraintWidth_percent="0.5" />
+            app:layout_constraintWidth_percent="0.487">
+
+            <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
+                android:id="@+id/ssiv2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </androidx.cardview.widget.CardView>
 
         <ImageButton
             android:id="@+id/ibtnIDBack"
@@ -375,61 +391,57 @@
         <TextView
             android:id="@+id/tvIdDate1"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
+            android:layout_height="36dp"
+            android:layout_marginBottom="10dp"
             android:background="@drawable/effect_44"
             android:backgroundTint="#34FFFFFF"
+            android:gravity="center"
             android:paddingStart="20dp"
-            android:paddingTop="10dp"
             android:paddingEnd="20dp"
-            android:paddingBottom="10dp"
             android:text="2025-05-30"
-            android:textColor="@color/subColor400"
+            android:textColor="@color/subColor500"
             android:textSize="18dp"
             android:visibility="invisible"
-            app:layout_constraintBottom_toBottomOf="@+id/ssiv1"
-            app:layout_constraintEnd_toEndOf="@+id/ssiv1"
-            app:layout_constraintStart_toStartOf="@+id/ssiv1" />
+            app:layout_constraintBottom_toBottomOf="@+id/cardView2"
+            app:layout_constraintEnd_toEndOf="@+id/cardView2"
+            app:layout_constraintStart_toStartOf="@+id/cardView2" />
 
         <TextView
             android:id="@+id/tvIdDate2"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
+            android:layout_height="36dp"
+            android:layout_marginBottom="10dp"
             android:background="@drawable/effect_44"
             android:backgroundTint="#34FFFFFF"
+            android:gravity="center"
             android:paddingStart="20dp"
-            android:paddingTop="10dp"
             android:paddingEnd="20dp"
-            android:paddingBottom="10dp"
             android:text="2025-05-30"
-            android:textColor="@color/subColor400"
+            android:textColor="@color/subColor500"
             android:textSize="18dp"
             android:visibility="invisible"
-            app:layout_constraintBottom_toBottomOf="@+id/ssiv2"
-            app:layout_constraintEnd_toEndOf="@+id/ssiv2"
-            app:layout_constraintStart_toEndOf="@+id/ssiv1" />
+            app:layout_constraintBottom_toBottomOf="@+id/cardView"
+            app:layout_constraintEnd_toEndOf="@+id/cardView"
+            app:layout_constraintStart_toStartOf="@+id/cardView" />
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnIDRatio"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:layout_marginEnd="40dp"
+            android:layout_height="36dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
             android:background="@drawable/effect_44"
             android:backgroundTint="#19000000"
             android:elevation="0dp"
             android:paddingStart="24dp"
-            android:paddingTop="6dp"
             android:paddingEnd="24dp"
-            android:paddingBottom="6dp"
             android:stateListAnimator="@null"
-            android:text="얼굴 비율 보기"
-            android:textColor="@color/subColor400"
+            android:text="🙆 얼굴 비율 보기"
+            android:textColor="@color/subColor500"
             android:textSize="18dp"
             android:visibility="invisible"
-            app:layout_constraintEnd_toEndOf="@+id/ssiv2"
-            app:layout_constraintTop_toTopOf="@id/ssiv2" />
+            app:layout_constraintEnd_toEndOf="@+id/cardView"
+            app:layout_constraintTop_toTopOf="@+id/cardView" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </FrameLayout>

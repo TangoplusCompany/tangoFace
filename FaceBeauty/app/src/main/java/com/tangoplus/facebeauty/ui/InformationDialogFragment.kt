@@ -18,8 +18,6 @@ import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.data.DrawLine
 import com.tangoplus.facebeauty.data.DrawRatioLine
 import com.tangoplus.facebeauty.data.FaceComparisonItem
-import com.tangoplus.facebeauty.data.FaceResult
-import com.tangoplus.facebeauty.data.db.FaceStatic
 import com.tangoplus.facebeauty.databinding.FragmentInformationDialogBinding
 import com.tangoplus.facebeauty.ui.adapter.FaceStaticRVAdapter
 import com.tangoplus.facebeauty.ui.view.GridSpacingItemDecoration
@@ -54,6 +52,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
     override fun onDestroyView() {
         super.onDestroyView()
         mvm.comparisonDoubleItem = null
+        if (ivm.getRatioState() != DrawRatioLine.A_NONE) ivm.setAllOrNone()
     }
 
     override fun onResume() {
@@ -140,10 +139,10 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         if (coordinates != null) {
             val vertiIndices = listOf(234, 33, 133, 362, 263, 356)
             val vertiCoordinates = vertiIndices.map { coordinates[it] }
-            Log.v("vertiCoordinates", "$vertiCoordinates")
+//            Log.v("vertiCoordinates", "$vertiCoordinates")
             val horizonIndices = listOf(8, 2, 13, 152)
             val horizonCoordinates = horizonIndices.map { coordinates[it] }
-            Log.v("horizonCoordinates", "$horizonCoordinates")
+//            Log.v("horizonCoordinates", "$horizonCoordinates")
             val vertiText = calculateRatios(vertiCoordinates, true)
             val horizonText = calculateRatios(horizonCoordinates, false)
 
@@ -232,9 +231,6 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         } else {
             ivm.getSeqIndex() to ivm.getSeqIndex()
         }
-        Log.v("seq봐", "$leftJA")
-        Log.v("seq봐", "$rightJA")
-        Log.v("seq봐", "$leftSeq, $rightSeq")
         if (leftJA != null && rightJA != null) {
             val leftValue = leftJA.getJSONObject(leftSeq).getJSONObject("data")
             val rightValue = rightJA.getJSONObject(rightSeq).getJSONObject("data")
@@ -328,9 +324,9 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                         listOf(
                             FaceComparisonItem("입 높이", leftValue.getDouble("jaw_opening_lips_distance").toFloat(), 0f),
                             FaceComparisonItem("입 각도", leftValue.getDouble("jaw_opening_lips_vertical_angle").toFloat(), 0f),
-                            FaceComparisonItem("양 어깨", leftValue.getDouble("neck_extention_shoulder_horizontal_angle").toFloat(), 0f),
-                            FaceComparisonItem("양 귀", leftValue.getDouble("neck_extention_ear_horizontal_angle").toFloat(), 0f),
-                            FaceComparisonItem("목 각도", leftValue.getDouble("neck_extention_neck_vertical_angle").toFloat(), 0f),
+                            FaceComparisonItem("양 어깨", rightValue.getDouble("neck_extention_shoulder_horizontal_angle").toFloat(), 0f),
+                            FaceComparisonItem("양 귀", rightValue.getDouble("neck_extention_ear_horizontal_angle").toFloat(), 0f),
+                            FaceComparisonItem("목 각도", rightValue.getDouble("neck_extention_neck_vertical_angle").toFloat(), 0f),
                         )
                     }
                 }
@@ -343,7 +339,8 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         bd.ssiv1.recycle()
         bd.ssiv2.recycle()
         Log.v("setResult", "setResult started")
-        if (mvm.comparisonDoubleItem != null) {
+        val isComparison = mvm.comparisonDoubleItem != null
+        if (isComparison) {
             val leftResult = mvm.comparisonDoubleItem?.first
             val rightResult = mvm.comparisonDoubleItem?.second
             val result = buildFaceComparisonList(true, leftResult?.results, rightResult?.results)?.toMutableList()
@@ -360,12 +357,17 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 
         }
         Log.v("staticDatas", "${ivm.currentFaceComparision}")
-
-        val faceStaticAdapter = FaceStaticRVAdapter(ivm.currentFaceComparision)
+        val basicInfo = if (isComparison) {
+            Pair(mvm.comparisonDoubleItem?.first?.regDate!!, mvm.comparisonDoubleItem?.second?.regDate!!)
+        } else null
+        val faceStaticAdapter = FaceStaticRVAdapter(ivm.currentFaceComparision, basicInfo, ivm.getSeqIndex())
         bd.msGD.setOnCheckedChangeListener { _, isChecked ->
             // 리스너 동작
             setLinesInImage(isChecked)
             faceStaticAdapter.setAllChecked(isChecked)
+            if (!isChecked) {
+                ivm.currentCheckedLines.clear()
+            }
         }
 
         bd.rvGD2.apply {
@@ -457,6 +459,10 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
             if (mvm.comparisonDoubleItem == null) {
                 when (ivm.getSeqIndex()) {
                     0 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_CANTHUS)
+                        ivm.currentCheckedLines.add(DrawLine.A_TIP_OF_LIPS)
+                        ivm.currentCheckedLines.add(DrawLine.A_CHIN)
+
                         ivm.currentCheckedLines.add(DrawLine.A_CANTHUS_ORAL)
                         ivm.currentCheckedLines.add(DrawLine.A_NASALWINGS_ORAL)
                         ivm.currentCheckedLines.add(DrawLine.E_CHEEKS)
@@ -475,11 +481,18 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
             } else {
                 when (ivm.getSeqIndex()) {
                     0 -> {
-                        ivm.currentCheckedLines.add(DrawLine.A_CANTHUS_ORAL)
-                        ivm.currentCheckedLines.add(DrawLine.A_NASALWINGS_ORAL)
+                        ivm.currentCheckedLines.add(DrawLine.A_CANTHUS)
+                        ivm.currentCheckedLines.add(DrawLine.A_TIP_OF_LIPS)
+                        ivm.currentCheckedLines.add(DrawLine.A_CHIN)
+
+
                         ivm.currentCheckedLines.add(DrawLine.E_CHEEKS)
                     }
                     1 -> {
+                        ivm.currentCheckedLines.add(DrawLine.A_CANTHUS)
+                        ivm.currentCheckedLines.add(DrawLine.A_TIP_OF_LIPS)
+                        ivm.currentCheckedLines.add(DrawLine.A_CHIN)
+
                         ivm.currentCheckedLines.add(DrawLine.A_CANTHUS_ORAL)
                         ivm.currentCheckedLines.add(DrawLine.A_NASALWINGS_ORAL)
                         ivm.currentCheckedLines.add(DrawLine.E_CHEEKS)
@@ -580,6 +593,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                             if (i == indexx) R.color.black else R.color.subColor300
                         )
                     )
+
                 }
                 setImage()
                 setResult()

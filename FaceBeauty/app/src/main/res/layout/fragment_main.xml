@@ -76,7 +76,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="15dp"
             android:layout_marginTop="96dp"
-            android:text="기록 검색"
+            android:text="검색 🔎"
             android:textColor="@color/black"
             android:textSize="20dp"
             app:layout_constraintStart_toStartOf="parent"
@@ -108,7 +108,7 @@
             android:layout_marginStart="15dp"
             android:layout_marginTop="64dp"
             android:gravity="center"
-            android:text="비교"
+            android:text="비교 📊"
             android:textColor="@color/black"
             android:textSize="20dp"
             app:layout_constraintStart_toStartOf="parent"
@@ -149,7 +149,7 @@
             android:paddingStart="40dp"
             android:paddingEnd="40dp"
             android:stateListAnimator="@null"
-            android:text="비교 하기"
+            android:text="아이템 선택"
             android:textColor="@color/white"
             android:textSize="18dp"
             app:layout_constraintEnd_toEndOf="parent"
@@ -190,7 +190,7 @@
                 android:id="@+id/ibtnMNavi"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="40dp"
+                android:layout_marginStart="32dp"
                 android:layout_marginTop="20dp"
                 android:background="@drawable/effect_20"
                 android:backgroundTint="@color/subColor100"
@@ -241,6 +241,18 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/sflM" />
+
+            <TextView
+                android:id="@+id/textView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:text="히스토리 📜"
+                android:textColor="@color/black"
+                android:textSize="20dp"
+                app:layout_constraintBottom_toBottomOf="@+id/ibtnMNavi"
+                app:layout_constraintStart_toEndOf="@+id/ibtnMNavi"
+                app:layout_constraintTop_toTopOf="@+id/ibtnMNavi" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>

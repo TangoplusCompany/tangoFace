@@ -25,14 +25,12 @@ import com.tangoplus.facebeauty.data.db.FaceDao
 import com.tangoplus.facebeauty.databinding.FragmentMainBinding
 import com.tangoplus.facebeauty.ui.AnimationUtility.animateExpand
 import com.tangoplus.facebeauty.ui.adapter.MeasureRVAdapter
-import com.tangoplus.facebeauty.ui.view.GridSpacingItemDecoration
 import com.tangoplus.facebeauty.ui.listener.OnMeasureClickListener
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.vm.InputViewModel
 import com.tangoplus.facebeauty.vm.MainViewModel
 import androidx.core.view.isVisible
 import com.tangoplus.facebeauty.data.FaceDisplay
-import com.tangoplus.facebeauty.ui.view.StickyHeaderItemDecoration
 
 
 class MainFragment : Fragment(), OnMeasureClickListener {
@@ -64,14 +62,14 @@ class MainFragment : Fragment(), OnMeasureClickListener {
         mvm.dataLoadComplete.observe(viewLifecycleOwner) { isLoaded ->
 
             if (isLoaded == true) {
-                Log.v("displayList", "${mvm.displayList.value}")
+//                Log.v("displayList", "${mvm.displayList.value}")
 
                 if (mvm.isMeasureFinish) {
                     mvm.currentResult.value = mvm.currentFaceResults.firstOrNull()
                     val infoDialog = InformationDialogFragment()
                     infoDialog.show(requireActivity().supportFragmentManager, "")
                 }
-                Log.v("displayList", "${mvm.displayList.value}")
+//                Log.v("displayList", "${mvm.displayList.value}")
 
                 cancelShimmer()
                 val countText = "총 기록 건수: ${mvm.currentFaceResults.size}건"
@@ -167,7 +165,7 @@ class MainFragment : Fragment(), OnMeasureClickListener {
         bd.btnMComparision.setOnSingleClickListener {
             if (bd.btnMComparision.text == "취소") {
                 mvm.clearItems()
-                bd.btnMComparision.text = "비교 하기"
+                bd.btnMComparision.text = "아이템 선택"
                 mvm.setComparisonState(true)
             }
             if (mvm.currentFaceResults.size < 2) {
@@ -215,7 +213,7 @@ class MainFragment : Fragment(), OnMeasureClickListener {
             }
 
             if (mvm.getComparisonState()) {
-                bd.btnMComparision.text = "비교 하기"
+                bd.btnMComparision.text = "아이템 선택"
 //                bd.btnMComparision.isEnabled = true
                 mvm.setComparisonState(false)
 
@@ -240,7 +238,6 @@ class MainFragment : Fragment(), OnMeasureClickListener {
                 resetAllRecyclerViewItems()
             }
         }
-
     }
 
     private fun resetAllRecyclerViewItems() {
@@ -410,7 +407,6 @@ class MainFragment : Fragment(), OnMeasureClickListener {
     override fun onMeasureClick(tempServerSn: Int) {
         mvm.currentResult.value = mvm.currentFaceResults.find { it.tempServerSn == tempServerSn }
 //        scrollToView(bd.ibtnMBack, bd.nsvM)
-        Log.v("currentValue", "${mvm.currentResult.value}")
         val infoDialog = InformationDialogFragment()
         infoDialog.show(requireActivity().supportFragmentManager, null)
     }

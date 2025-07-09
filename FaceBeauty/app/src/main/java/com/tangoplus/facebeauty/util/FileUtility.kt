@@ -113,52 +113,6 @@ object FileUtility {
         return filePath
     }
 
-
-    fun createMirroredOverlayImage(original: Bitmap, isLeftFlip: Boolean): Bitmap {
-        val width = original.width
-        val height = original.height
-        val halfWidth = width / 2
-
-        // 1. 오른쪽 절반 자르기
-        val rightHalf = Bitmap.createBitmap(original, if (isLeftFlip) 0 else halfWidth, 0, halfWidth, height)
-
-        // 2. 좌우 반전
-        val matrix = Matrix().apply {
-            preScale(-1f, 1f)
-        }
-        val flipped = Bitmap.createBitmap(rightHalf, 0, 0, rightHalf.width, rightHalf.height, matrix, true)
-
-        // 3. 알파값 적용 (50%)
-        val alphaBitmap = createBitmap(flipped.width, flipped.height)
-        val canvasAlpha = Canvas(alphaBitmap)
-        val paint = Paint().apply { alpha = 128 } // 128 out of 255 = 50%
-        canvasAlpha.drawBitmap(flipped, 0f, 0f, paint)
-
-        val result = original.copy(Bitmap.Config.ARGB_8888, true)
-        val canvas = Canvas(result)
-        val x = if (isLeftFlip) (width - halfWidth).toFloat() else 0f  // 오른쪽 끝 위치
-        canvas.drawBitmap(alphaBitmap, x, 0f, null)
-
-        return result
-    }
-
-
-
-
-//    fun getImageSizeFromUri(context: Context, uri: Uri): Pair<Int, Int>? {
-//        return try {
-//            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-//            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-//                BitmapFactory.decodeStream(inputStream, null, options)
-//            }
-//            Pair(options.outWidth, options.outHeight)
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//            null
-//        }
-//    }
-
-
     fun readJsonFromUri(context: Context, uri: Uri): JSONObject {
         return context.contentResolver.openInputStream(uri)?.use { inputStream ->
             val jsonString = inputStream.bufferedReader().use { it.readText() }
@@ -227,18 +181,5 @@ object FileUtility {
         val scrollTo = scrollY + viewTop - scrollViewTop
         nsv.smoothScrollTo(0, scrollTo)
     }
-
-//    private fun isRestingWorse(fcItem : FaceComparisonItem?) : Boolean {
-//        Log.v("비교확인", "$fcItem")
-//        return if (fcItem != null) {
-//            if (abs(fcItem.restingValue) < abs(fcItem.occlusalValue)) {
-//                false
-//            } else {
-//                true
-//            }
-//        } else {
-//            true
-//        }
-//    }
 
 }

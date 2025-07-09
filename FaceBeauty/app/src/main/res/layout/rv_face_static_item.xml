@@ -14,16 +14,18 @@
         android:layout_marginTop="20dp"
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="20dp"
-        android:background="@color/subColor100"
+        android:background="@drawable/bckgnd_12"
+        android:backgroundTint="@color/subColor100"
         android:orientation="horizontal"
         android:padding="10dp"
+        android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/llFSI">
 
         <androidx.cardview.widget.CardView
-            android:id="@+id/cardView"
+            android:id="@+id/cvFSIState"
             android:layout_width="20dp"
             android:layout_height="20dp"
             app:cardBackgroundColor="#FB3535"
@@ -43,7 +45,7 @@
             android:textSize="18dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/cardView"
+            app:layout_constraintStart_toEndOf="@+id/cvFSIState"
             app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -76,7 +78,7 @@
         app:layout_constraintTop_toBottomOf="@+id/cbFSITitle">
 
         <TextView
-            android:id="@+id/textView3"
+            android:id="@+id/tvFSITitle0"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -86,7 +88,7 @@
             android:textSize="18dp" />
 
         <TextView
-            android:id="@+id/textView4"
+            android:id="@+id/tvFSITitle1"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"

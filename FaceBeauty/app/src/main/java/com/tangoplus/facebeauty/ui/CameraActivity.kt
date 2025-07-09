@@ -65,8 +65,6 @@ import com.tangoplus.facebeauty.util.FileUtility.getRequiredPermissions
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.util.MathHelpers.calculateScaleFromPart
 import com.tangoplus.facebeauty.util.MathHelpers.calculateSlope
-import com.tangoplus.facebeauty.util.MathHelpers.getRealDistanceX
-import com.tangoplus.facebeauty.util.MathHelpers.setScaleX
 import com.tangoplus.facebeauty.util.SoundManager.playSound
 import com.tangoplus.facebeauty.vision.face.FaceBlendshapesResultAdapter
 import com.tangoplus.facebeauty.vision.face.FaceLandmarkerHelper
@@ -91,7 +89,8 @@ import com.tangoplus.facebeauty.util.FileUtility.toJSONObject
 import com.tangoplus.facebeauty.util.MathHelpers.calculateAngle
 import com.tangoplus.facebeauty.util.MathHelpers.calculatePolygonArea
 import com.tangoplus.facebeauty.util.MathHelpers.correctingValue
-import com.tangoplus.facebeauty.util.MathHelpers.getRealDistanceY
+import com.tangoplus.facebeauty.util.MathHelpers.getNormalizedDistance
+import com.tangoplus.facebeauty.util.MathHelpers.setScaleFactor
 import com.tangoplus.facebeauty.util.PreferenceUtility
 import com.tangoplus.facebeauty.vision.pose.PoseLandmarkerHelper
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -404,12 +403,12 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     fDao.insertStatic(static4)
                     fDao.insertStatic(static5)
                     finishedResult.regDate = static0.reg_date
-                    releaseResources()
                     withContext(Dispatchers.Main) {
                         viewModel.comparisonDoubleItem = null
                         val intent = Intent(this@CameraActivity, MainActivity::class.java)
                         intent.putExtra("isMeasureFinish", true)
                         startActivity(intent)
+//                        releaseResources()
                         finishAffinity()
 
                     }
@@ -419,8 +418,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     startTimer()
                 }
             }
-
         }
+
         binding.tvGoGallery.setOnSingleClickListener {
             val intent = Intent(this@CameraActivity, MainActivity::class.java)
             startActivity(intent)
@@ -559,7 +558,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     // 0.0
                     // 3.7
                     val scale = calculateScaleFromPart(distance)
-                    setScaleX(scale)
+                    Log.v("스케일설정", "$distance $scale")
+                    setScaleFactor(scale)
                 }
 
                 val leftEye = faceLandmarks[33]
@@ -570,12 +570,11 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 val leftEarPoint = faceLandmarks[234] // 왼쪽 귓바퀴 근처
                 val rightEarPoint = faceLandmarks[454] // 오른쪽 귓바퀴 근처
 
-                val leftEyeDistance = getRealDistanceX(Pair(leftEye.x(), leftEye.y()), Pair(middleEye.x(), middleEye.y()))
-                val rightEyeDistance = getRealDistanceX(Pair(rightEye.x(), rightEye.y()), Pair(middleEye.x(), middleEye.y()))
+                val leftEyeDistance = getNormalizedDistance(Pair(leftEye.x(), leftEye.y()), Pair(middleEye.x(), middleEye.y()))
+                val rightEyeDistance = getNormalizedDistance(Pair(rightEye.x(), rightEye.y()), Pair(middleEye.x(), middleEye.y()))
                 val eyeDistanceGap = abs(leftEyeDistance - rightEyeDistance)
-
+                // horizon state 설정
                 val horizontalLineVector = calculateAngle(leftEarPoint.x(), leftEarPoint.y(), noseTip.x(), noseTip.y(),rightEarPoint.x(), rightEarPoint.y())
-                val vertiBoolean = if (eyeDistanceGap < 0.275f) true else false
                 val horizonBoolean = if (seqStep.value == 5) {
                     horizontalLineVector in 50f..90f
                 } else {
@@ -585,9 +584,16 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 //                Log.v("얼굴 중앙", "$isFaceCenter")
 //                Log.v("라인벡터", "코: ${faceLandmarks[0].x()}, ${faceLandmarks[0].y()}, 왼쪽눈: ${faceLandmarks[33].x()}, ${faceLandmarks[33].x()}, 오른쪽 눈: ${faceLandmarks[263].x()}, ${faceLandmarks[263].x()}")
 
+                // verti state 설정
+                val vertiBoolean = when( seqStep.value ) {
+                    5 -> true
+                    else -> if (eyeDistanceGap < 0.25f) true else false
+                }
                 val eyeSlope = calculateSlope(leftEye.x(), leftEye.y(), rightEye.x(), rightEye.y())
-                val eyeParallel = (eyeSlope in 176.5f..181f) || (eyeSlope in -181f .. -176.5f)
-
+                val eyeParallel = when (seqStep.value) {
+                    5 -> true
+                    else -> (eyeSlope in 176.5f..181f) || (eyeSlope in -181f .. -176.5f)
+                }
                 val vertiMediator = vertiBoolean && eyeParallel
 
 //                Log.v("eye평행", "$eyeSlope ${eyeParallel}, ${vertiBoolean}, ")
@@ -732,7 +738,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 0 -> "턱관절 교합상태를 진단합니다\n편한 상태로 입을 다물고 정면을 응시해주세요\n게이지가 차면 자동으로 촬영을 시작합니다 !"
                 1 -> "두번째, 교합 상태입니다\n이를 맞물리게 물고 입술을 벌려보세요"
                 2 -> "다음은 턱 가측 이동 상태입니다\n정면에서 아래턱을 최대한 왼쪽으로 위치해주세요"
-                3 -> "잘하셨습니다 !\n이번엔 아래턱을 최대한 오른쪽으로 위치해주세요"
+                3 -> "잘하셨습니다! 이번엔\n아래턱을 최대한 오른쪽으로 위치해주세요"
                 4 -> "다섯번째는 개구상태입니다\n입을 벌려 정면을 응시해주세요"
                 5 -> "마지막 단계는 목을 편 상태입니다\n턱을 위로 들어 기다려주세요\n자동으로 촬영을 시작합니다"
                 6 -> "수고하셨습니다\n버튼을 눌러 결과를 확인해보세요"
@@ -970,11 +976,11 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         put("wz", targetLandmark.z())
                     }
 
-//                        if (index in listOf(7, 8, 11, 12)) {
-//                            Log.v("포즈 들가자", "${index} : (${calculateScreenX(targetLandmark.x()).roundToInt()}, ${calculateScreenY(targetLandmark.y()).roundToInt()}), 원본: (${tempLandmarks[index]?.first}, ${tempLandmarks[index]?.second})")
-//                        }
+                    if (index in listOf(7, 8, 11, 12)) {
+                        Log.v("포즈 들가자", "${index} : (${calculateScreenX(targetLandmark.x()).roundToInt()}, ${calculateScreenY(targetLandmark.y()).roundToInt()})")
+                    }
                     mvm.tempPlrJA.put(jo)
-                    mvm.currentPlrCoordinate.add(Pair(scaledX, scaledY)) // 33 개가 다 담김
+                    mvm.currentPlrCoordinate.add(Pair(targetLandmark.x(), targetLandmark.y())) // 33 개가 다 담김
                 }
                 // 마지막 자세만 값 저장
                 mvm.plrJA.put(mvm.tempPlrJA)
@@ -1100,7 +1106,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             }
             // seq 1개의 좌표를 담고 tempCoordinates는 초기화
             mvm.coordinatesJA.put(mvm.tempCoordinateJA)
-            val vmFlr = mvm.currentCoordinate
+            val vmFlr = mvm.relativeCoordinate
             when (step) {
                 0 -> {
                     val eyeBrowAngle = calculateSlope(vmFlr[107].first , vmFlr[107].second, vmFlr[336].first, vmFlr[336].second)
@@ -1142,7 +1148,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         put("resting_nasal_wing_tip_of_lips_right_vertical_angle", nasalWingLipsAngle.first)
                         put("resting_left_cheeks_extent", cheeksExtents.second)
                         put("resting_right_cheeks_extent", cheeksExtents.first)
-
                     }
                     mvm.staticJA.put(tempStatic)
                     Log.v("정면 각도들", "eyeAngle: $eyeAngle eyebrowAngle: $eyeBrowAngle tipOfLipsAngle: $tipOfLipsAngle chinAngle: $correctTipOfChinsAngle canthusOralAngle: $canthusOralAngle nasalWingLipsAngle:$nasalWingLipsAngle, cheeksExtent: $cheeksExtents")
@@ -1198,8 +1203,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     val tiltNoseChinAngle = calculateSlope(vmFlr[1].first , vmFlr[1].second, vmFlr[152].first, vmFlr[152].second)
                     val tiltTipOfLipsAngle = calculateSlope(vmFlr[61].first , vmFlr[1].second, vmFlr[291].first, vmFlr[291].second)
                     val mandibularDistance = Pair(
-                        getRealDistanceX(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[58].first, vmFlr[58].second)),
-                        getRealDistanceX(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[288].first, vmFlr[288].second))
+                        getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[58].first, vmFlr[58].second)),
+                        getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[288].first, vmFlr[288].second))
                     )
 
                     // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
@@ -1217,8 +1222,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     val tiltNoseChinAngle = calculateSlope(vmFlr[1].first , vmFlr[1].second, vmFlr[152].first, vmFlr[152].second)
                     val tiltTipOfLipsAngle = calculateSlope(vmFlr[61].first , vmFlr[1].second, vmFlr[291].first, vmFlr[291].second)
                     val mandibularDistance = Pair(
-                        getRealDistanceX(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[58].first, vmFlr[58].second)),
-                        getRealDistanceX(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[288].first, vmFlr[288].second))
+                        getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[58].first, vmFlr[58].second)),
+                        getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[288].first, vmFlr[288].second))
                     )
 
                     // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
@@ -1234,7 +1239,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
                 }
                 4 -> {
-                    val openingLipsDisance = getRealDistanceY(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[14].first, vmFlr[14].second))
+                    val openingLipsDisance = getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[14].first, vmFlr[14].second))
                     val openingLipsAngle = calculateSlope(vmFlr[13].first , vmFlr[13].second, vmFlr[14].first, vmFlr[14].second)
 
                     // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
@@ -1244,12 +1249,11 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     }
                     mvm.staticJA.put(tempStatic)
                     Log.v("입 벌림 각도들", "openingLipsDisance: $openingLipsDisance openingLipsAngle: $openingLipsAngle ")
-
                 }
                 5 -> {
 
                     val plr = mvm.currentPlrCoordinate
-
+                    Log.v("plr봐보기", "$plr")
                     val shoulderHorizontalAngle = calculateSlope(plr[11].first , plr[11].second, plr[12].first, plr[12].second)
                     val earHorizontalAngle = calculateSlope(plr[7].first , plr[7].second, plr[8].first, plr[8].second)
 

@@ -5,5 +5,6 @@ data class FaceComparisonItem(
     val leftValue: Float? = null,
     val rightValue: Float? = null,
     var isChecked: Boolean = false,
+    var state : Int = 0,
     val type: RVItemType = RVItemType.NORMAL
 )

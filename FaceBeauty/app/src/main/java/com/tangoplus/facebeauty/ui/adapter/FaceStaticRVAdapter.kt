@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.checkbox.MaterialCheckBox
@@ -17,10 +18,12 @@ import com.tangoplus.facebeauty.databinding.RvFaceStaticItemBinding
 import com.tangoplus.facebeauty.ui.listener.OnAdapterMoreClickListener
 import com.tangoplus.facebeauty.ui.listener.OnFaceStaticCheckListener
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
+import com.tangoplus.facebeauty.vm.InformationViewModel
+import com.tangoplus.facebeauty.vm.MainViewModel
 import java.text.DecimalFormat
 import kotlin.math.abs
 
-class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonItem>, private val basicInfo : Pair<String, String>? = null, private val seqValue: Int) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     var faceStaticCheckListener: OnFaceStaticCheckListener? = null
     var adapterMoreClickedListener : OnAdapterMoreClickListener? = null
     var isExpanded = false
@@ -43,17 +46,42 @@ class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonIt
         private val cbFSITitle: MaterialCheckBox = view.findViewById(R.id.cbFSITitle)
         private val tvFSI0: TextView = view.findViewById(R.id.tvFSI0)
         private val tvFSI1: TextView = view.findViewById(R.id.tvFSI1)
-
+        private val tvFSITitle0 : TextView = view.findViewById(R.id.tvFSITitle0)
+        private val tvFSITitle1 : TextView = view.findViewById(R.id.tvFSITitle1)
+        private val cvFSIState : CardView = view.findViewById(R.id.cvFSIState)
 
         fun bind(item: FaceComparisonItem, position: Int) {
             val df = DecimalFormat("#.##")
             cbFSITitle.text = item.label
 
-            val seq0Data = df.format(item.leftValue) + if (item.label.contains("각도")) "˚" else "cm"
-            val seq1Data = df.format(item.rightValue) + if (item.label.contains("각도")) "˚" else "cm"
+
+            // state 확인
+            val seq0Data = df.format(item.leftValue) + if (item.label in listOf("왼쪽 중간 턱", "오른쪽 중간 턱", "입 높이", "볼 너비")) "cm" else "˚"
+            val seq1Data = df.format(item.rightValue) + if (item.label in listOf("왼쪽 중간 턱", "오른쪽 중간 턱", "입 높이", "볼 너비")) "cm" else "˚"
             tvFSI0.text = seq0Data
             tvFSI1.text = seq1Data
-            // TODO 비교 부분 / 입벌린 부분과 턱든부분 데이터 수정 / 하단 멘트 넣기 
+
+            if (basicInfo != null) {
+                val leftTitle = "왼쪽 ${basicInfo.first.substring(5, 10).replace("-", "월 ")}일"
+                tvFSITitle0.text =  leftTitle
+                val rightTitle = "오른쪽 ${basicInfo.second.substring(5, 10).replace("-", "월 ")}일"
+                tvFSITitle1.text = rightTitle
+            } else {
+                // 상세보기일 때
+                val leftTitle = when (seqValue) {
+                    0 -> "안정 상태"
+                    1 -> "턱 왼쪽 쏠림"
+                    else -> if (item.label in listOf("입 높이", "입 각도")) "입 벌림" else "턱 폄"
+                }
+                tvFSITitle0.text = leftTitle
+                val rightTitle = when (seqValue) {
+                    0 -> "교합 상태"
+                    else -> "턱 오른쪽 쏠림"
+
+                }
+                tvFSITitle1.text =  rightTitle
+            }
+
             clFSI.setOnSingleClickListener {
                 cbFSITitle.performClick()
             }
@@ -61,34 +89,18 @@ class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonIt
             tvFSI1.setTypeface(null, Typeface.NORMAL)
             if (item.leftValue != null && item.rightValue != null) {
                 when {
-                    item.label.contains("콧망울 수평 각도") -> {
-                        Log.v("값들", "콧망울: ${abs(item.leftValue)}, ${abs(item.rightValue)}")
-                        if (abs(item.leftValue) > abs(item.rightValue)) {
+                    item.label in listOf("볼 너비", "중간 턱", "입 높이") -> {
+                        Log.v("값들", "양쪽: ${abs(item.leftValue)}, ${abs(item.rightValue)}")
+                        if (abs(item.leftValue) < abs(item.rightValue)) {
                             tvFSI1.setTypeface(null, Typeface.BOLD)
                         } else {
                             tvFSI0.setTypeface(null, Typeface.BOLD)
                         }
                     }
-                    item.label.contains("수평 각도") -> {
-                        Log.v("값들", "수평: ${abs(item.leftValue)}, ${abs(item.rightValue)}")
-                        if (abs(item.leftValue) > abs(item.rightValue)) {
-                            tvFSI1.setTypeface(null, Typeface.BOLD)
-                        } else {
-                            tvFSI0.setTypeface(null, Typeface.BOLD)
-                        }
-                    }
-                    item.label.contains("수직 각도") -> {
-                        Log.v("값들", "수직: ${abs(item.leftValue)}, ${abs(item.rightValue)}")
-                        if (abs(item.leftValue) > abs(item.rightValue)) {
-                            tvFSI1.setTypeface(null, Typeface.BOLD)
-                        } else {
-                            tvFSI0.setTypeface(null, Typeface.BOLD)
-                        }
-                    }
-                    item.label.contains("거리") -> {
+                    else -> { // item.label.contains("거리")
                         Log.v("값들", "거리: ${abs(item.leftValue)}, ${abs(item.rightValue)}")
 
-                        if (abs(item.leftValue) < abs(item.rightValue)) {
+                        if (abs(item.leftValue) > abs(item.rightValue)) {
                             tvFSI1.setTypeface(null, Typeface.BOLD)
                         } else {
                             tvFSI0.setTypeface(null, Typeface.BOLD)
@@ -96,13 +108,9 @@ class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonIt
                     }
                 }
             }
-
-
-            // ✅ 리스너 제거 후 isChecked 세팅 (중복 리스너 방지)
             cbFSITitle.setOnCheckedChangeListener(null)
             cbFSITitle.isChecked = item.isChecked
 
-            // ✅ 리스너 재설정
             cbFSITitle.setOnCheckedChangeListener { _, isChecked ->
                 item.isChecked = isChecked
                 faceStaticCheckListener?.onFaceStaticCheck(position, isChecked)
@@ -115,6 +123,11 @@ class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonIt
                         notifyItemChanged(linkedPos)
                     }
                 }
+            }
+            // 입 벌림, 턱 들어올림 일 때 오른쪾 아이템 없애기
+            if (item.label in listOf("입 높이", "입 각도", "양 어깨", "양 귀", "목 각도")) {
+                tvFSITitle1.text = ""
+                tvFSI1.text = ""
             }
         }
     }
