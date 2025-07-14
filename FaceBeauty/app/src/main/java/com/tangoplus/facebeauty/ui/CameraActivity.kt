@@ -558,7 +558,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     // 0.0
                     // 3.7
                     val scale = calculateScaleFromPart(distance)
-                    Log.v("스케일설정", "$distance $scale")
+//                    Log.v("스케일설정", "$distance $scale")
                     setScaleFactor(scale)
                 }
 
@@ -575,21 +575,23 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 val eyeDistanceGap = abs(leftEyeDistance - rightEyeDistance)
                 // horizon state 설정
                 val horizontalLineVector = calculateAngle(leftEarPoint.x(), leftEarPoint.y(), noseTip.x(), noseTip.y(),rightEarPoint.x(), rightEarPoint.y())
-                val horizonBoolean = if (seqStep.value == 5) {
-                    horizontalLineVector in 50f..90f
-                } else {
-                    horizontalLineVector in 110f..150f
+                val horizonBoolean = when (seqStep.value) {
+                    5 -> horizontalLineVector in 50f..90f
+                    4 ->  horizontalLineVector in 140f..170f
+                    else -> horizontalLineVector in 135f..165f
                 }
+
                 binding.overlay.setHorizon(horizonBoolean)
 //                Log.v("얼굴 중앙", "$isFaceCenter")
 //                Log.v("라인벡터", "코: ${faceLandmarks[0].x()}, ${faceLandmarks[0].y()}, 왼쪽눈: ${faceLandmarks[33].x()}, ${faceLandmarks[33].x()}, 오른쪽 눈: ${faceLandmarks[263].x()}, ${faceLandmarks[263].x()}")
 
                 // verti state 설정
-                val vertiBoolean = when( seqStep.value ) {
+                val vertiBoolean = when ( seqStep.value ) {
                     5 -> true
-                    else -> if (eyeDistanceGap < 0.25f) true else false
+                    else -> if (eyeDistanceGap < 0.25f ) true else false
                 }
                 val eyeSlope = calculateSlope(leftEye.x(), leftEye.y(), rightEye.x(), rightEye.y())
+                // 눈 가로 선 (얼굴이 360도 방향을 x, y 방향 회전)
                 val eyeParallel = when (seqStep.value) {
                     5 -> true
                     else -> (eyeSlope in 176.5f..181f) || (eyeSlope in -181f .. -176.5f)
@@ -635,6 +637,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     }, 2000)
                     viewModel.setTextAnimationFlag(true)
                 }
+                binding.fdgv.visibility = View.VISIBLE
                 binding.fdgv.triggerIntroAnimationIfNeeded()
             }
 
@@ -943,7 +946,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             )
 
             // --------------------------# 목젖 위치를 잡기 위한 detectAsync #-------------------------
-            Log.v("포즈 들가자", "${seqStep.value}")
+//            Log.v("포즈 들가자", "${seqStep.value}")
             val resultBundle = poseLandmarker.detectImage(bitmap)
             if (resultBundle?.results?.first()?.landmarks()?.isNotEmpty() == true) {
                 val plr = resultBundle.results.first().landmarks()[0]
@@ -976,9 +979,9 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         put("wz", targetLandmark.z())
                     }
 
-                    if (index in listOf(7, 8, 11, 12)) {
-                        Log.v("포즈 들가자", "${index} : (${calculateScreenX(targetLandmark.x()).roundToInt()}, ${calculateScreenY(targetLandmark.y()).roundToInt()})")
-                    }
+//                    if (index in listOf(7, 8, 11, 12)) {
+//                        Log.v("포즈 들가자", "${index} : (${calculateScreenX(targetLandmark.x()).roundToInt()}, ${calculateScreenY(targetLandmark.y()).roundToInt()})")
+//                    }
                     mvm.tempPlrJA.put(jo)
                     mvm.currentPlrCoordinate.add(Pair(targetLandmark.x(), targetLandmark.y())) // 33 개가 다 담김
                 }
@@ -1130,8 +1133,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     )
                     val leftCheeks = listOf(197, 127, 234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152)
                     val rightCheeks = listOf(197, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152)
-                    val leftCheeksPoint = leftCheeks.map { vmFlr[it] }
-                    val rightCheeksPoint = rightCheeks.map { vmFlr[it] }
+                    val leftCheeksPoint = leftCheeks.map { mvm.currentCoordinate[it] }
+                    val rightCheeksPoint = rightCheeks.map { mvm.currentCoordinate[it] }
                     val cheeksExtents = Pair(
                         calculatePolygonArea(leftCheeksPoint),
                         calculatePolygonArea(rightCheeksPoint)
@@ -1150,7 +1153,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         put("resting_right_cheeks_extent", cheeksExtents.first)
                     }
                     mvm.staticJA.put(tempStatic)
-                    Log.v("정면 각도들", "eyeAngle: $eyeAngle eyebrowAngle: $eyeBrowAngle tipOfLipsAngle: $tipOfLipsAngle chinAngle: $correctTipOfChinsAngle canthusOralAngle: $canthusOralAngle nasalWingLipsAngle:$nasalWingLipsAngle, cheeksExtent: $cheeksExtents")
+                    Log.v("정면 각도들", "cheeksExtent: $cheeksExtents, eyeAngle: $eyeAngle eyebrowAngle: $eyeBrowAngle tipOfLipsAngle: $tipOfLipsAngle chinAngle: $correctTipOfChinsAngle canthusOralAngle: $canthusOralAngle nasalWingLipsAngle:$nasalWingLipsAngle, ")
 //                    Log.v("제이슨", "${}")
                 }
                 1 -> {
@@ -1175,8 +1178,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     )
                     val leftCheeks = listOf(197, 127, 234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152)
                     val rightCheeks = listOf(197, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152)
-                    val leftCheeksPoint = leftCheeks.map { vmFlr[it] }
-                    val rightCheeksPoint = rightCheeks.map { vmFlr[it] }
+                    val leftCheeksPoint = leftCheeks.map { mvm.currentCoordinate[it] }
+                    val rightCheeksPoint = rightCheeks.map { mvm.currentCoordinate[it] }
                     val cheeksExtents = Pair(
                         calculatePolygonArea(leftCheeksPoint),
                         calculatePolygonArea(rightCheeksPoint)

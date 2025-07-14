@@ -14,6 +14,11 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import com.skydoves.balloon.ArrowPositionRules
+import com.skydoves.balloon.Balloon
+import com.skydoves.balloon.BalloonAnimation
+import com.skydoves.balloon.BalloonSizeSpec
+import com.skydoves.balloon.showAlignTop
 import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.data.DrawLine
 import com.tangoplus.facebeauty.data.DrawRatioLine
@@ -52,6 +57,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
     override fun onDestroyView() {
         super.onDestroyView()
         mvm.comparisonDoubleItem = null
+        ivm.currentCheckedLines.clear()
         if (ivm.getRatioState() != DrawRatioLine.A_NONE) ivm.setAllOrNone()
     }
 
@@ -83,19 +89,69 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
     }
 
     override fun onFaceStaticCheck(drawLineIndex: Int, isChecked: Boolean) {
-        val selectedLine = when (drawLineIndex) {
-//            0 -> DrawLine.A_GLABELLA_NOSE
-//            1 -> DrawLine.A_GLABELLA_NOSE
-//            2 -> DrawLine.A_TIP_OF_LIPS
-//            3 -> DrawLine.A_GLABELLA_NOSE
-//            4 -> DrawLine.A_NOSE_CHIN
-//            5 -> DrawLine.A_EARFLAP_NASAL_WING
-//            6 -> DrawLine.A_EARFLAP_NASAL_WING
-//            7 -> DrawLine.D_EARFLAP_NOSE
-//            8 -> DrawLine.D_EARFLAP_NOSE
-//            9 -> DrawLine.D_TIP_OF_LIPS_CENTER_LIPS
-//            10 -> DrawLine.D_TIP_OF_LIPS_CENTER_LIPS
-            else -> DrawLine.A_GLABELLA_NOSE
+        val selectedLine = if (mvm.comparisonDoubleItem == null) {
+            when (ivm.getSeqIndex()) {
+                0 -> {
+                    when (drawLineIndex) {
+                        0 -> DrawLine.A_CANTHUS
+                        1 -> DrawLine.A_TIP_OF_LIPS
+                        2 -> DrawLine.A_CHIN
+                        3 -> DrawLine.A_CANTHUS_ORAL
+                        4 -> DrawLine.A_CANTHUS_ORAL
+                        5 -> DrawLine.A_NASALWINGS_ORAL
+                        6 -> DrawLine.A_NASALWINGS_ORAL
+                        7 -> DrawLine.E_CHEEKS
+                        8 -> DrawLine.E_CHEEKS
+                        else -> DrawLine.A_CANTHUS
+                    }
+                }
+                1 -> {
+                    // 0 ~ 3 item 전부 동시에 체크
+                    DrawLine.A_NOSE_JAW
+                }
+                2 -> {
+                    when (drawLineIndex) {
+                        0 -> DrawLine.A_BELOW_LIPS
+                        1 -> DrawLine.A_BELOW_LIPS
+                        2 -> DrawLine.A_SHOULDER
+                        3 -> DrawLine.A_EAR
+                        else -> DrawLine.A_NECK
+                    }
+                }
+                else -> DrawLine.A_GLABELLA_NOSE
+            }
+        } else {
+            when (ivm.getSeqIndex()) {
+                0, 1 -> {
+                    when (drawLineIndex) {
+                        0 -> DrawLine.A_CANTHUS
+                        1 -> DrawLine.A_TIP_OF_LIPS
+                        2 -> DrawLine.A_CHIN
+                        3 -> DrawLine.A_CANTHUS_ORAL
+                        4 -> DrawLine.A_CANTHUS_ORAL
+                        5 -> DrawLine.A_NASALWINGS_ORAL
+                        6 -> DrawLine.A_NASALWINGS_ORAL
+                        7 -> DrawLine.E_CHEEKS
+                        8 -> DrawLine.E_CHEEKS
+                        else -> DrawLine.A_CANTHUS
+                    }
+                }
+                2, 3 -> {
+                    // 0 ~ 3 item 전부 동시에 체크
+                    DrawLine.A_NOSE_JAW
+                }
+                4 -> {
+                    DrawLine.A_BELOW_LIPS
+                }
+                5 -> {
+                    when (drawLineIndex) {
+                        0 -> DrawLine.A_SHOULDER
+                        1 -> DrawLine.A_EAR
+                        else -> DrawLine.A_NECK
+                    }
+                }
+                else -> DrawLine.A_GLABELLA_NOSE
+            }
         }
         when (isChecked) {
             true -> ivm.currentCheckedLines.add(selectedLine)
@@ -162,48 +218,48 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         bd.cbGDHorizon.setOnCheckedChangeListener { _, isChecked ->
             setRatioLineInImage(false, isChecked)
         }
-//        bd.tvGDVerti.setOnSingleClickListener {
-//            val balloon = Balloon.Builder(requireContext())
-//                .setWidth(BalloonSizeSpec.WRAP)
-//                .setHeight(BalloonSizeSpec.WRAP)
-//                .setText("모든 비율이 1:1:1:1:1로 일정 할 수록 좋은 비율입니다.")
-//                .setTextColorResource(R.color.subColor800)
-//                .setTextSize(20f)
-//                .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
-//                .setArrowSize(0)
-//                .setMargin(6)
-//                .setPadding(12)
-//                .setCornerRadius(8f)
-//                .setBackgroundColorResource(R.color.white)
-//                .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
-//                .setLifecycleOwner(viewLifecycleOwner)
-//                .setOnBalloonDismissListener {  }
-//                .build()
-//            bd.tvGDVerti.showAlignTop(balloon)
-//            balloon.dismissWithDelay(3000L)
-//            balloon.setOnBalloonClickListener { balloon.dismiss() }
-//        }
-//        bd.tvGDHorizon.setOnSingleClickListener {
-//            val balloon = Balloon.Builder(requireContext())
-//                .setWidth(BalloonSizeSpec.WRAP)
-//                .setHeight(BalloonSizeSpec.WRAP)
-//                .setText("눈썹-코끝-입술-턱끝 3:1:2에 가까울수록 하관이 좋은 비율입니다.")
-//                .setTextColorResource(R.color.subColor800)
-//                .setTextSize(20f)
-//                .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
-//                .setArrowSize(0)
-//                .setMargin(6)
-//                .setPadding(12)
-//                .setCornerRadius(8f)
-//                .setBackgroundColorResource(R.color.white)
-//                .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
-//                .setLifecycleOwner(viewLifecycleOwner)
-//                .setOnBalloonDismissListener {  }
-//                .build()
-//            bd.tvGDHorizon.showAlignTop(balloon)
-//            balloon.dismissWithDelay(3000L)
-//            balloon.setOnBalloonClickListener { balloon.dismiss() }
-//        }
+        bd.tvGDVerti.setOnSingleClickListener {
+            val balloon = Balloon.Builder(requireContext())
+                .setWidth(BalloonSizeSpec.WRAP)
+                .setHeight(BalloonSizeSpec.WRAP)
+                .setText("모든 비율이 1:1:1:1:1로 일정 할 수록 좋은 비율입니다.")
+                .setTextColorResource(R.color.subColor800)
+                .setTextSize(20f)
+                .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
+                .setArrowSize(0)
+                .setMargin(6)
+                .setPadding(12)
+                .setCornerRadius(8f)
+                .setBackgroundColorResource(R.color.white)
+                .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
+                .setLifecycleOwner(viewLifecycleOwner)
+                .setOnBalloonDismissListener {  }
+                .build()
+            bd.tvGDVerti.showAlignTop(balloon)
+            balloon.dismissWithDelay(3000L)
+            balloon.setOnBalloonClickListener { balloon.dismiss() }
+        }
+        bd.tvGDHorizon.setOnSingleClickListener {
+            val balloon = Balloon.Builder(requireContext())
+                .setWidth(BalloonSizeSpec.WRAP)
+                .setHeight(BalloonSizeSpec.WRAP)
+                .setText("눈썹-코끝-입술-턱끝 3:1:2에 가까울수록 하관이 좋은 비율입니다.")
+                .setTextColorResource(R.color.subColor800)
+                .setTextSize(20f)
+                .setArrowPositionRules(ArrowPositionRules.ALIGN_ANCHOR)
+                .setArrowSize(0)
+                .setMargin(6)
+                .setPadding(12)
+                .setCornerRadius(8f)
+                .setBackgroundColorResource(R.color.white)
+                .setBalloonAnimation(BalloonAnimation.OVERSHOOT)
+                .setLifecycleOwner(viewLifecycleOwner)
+                .setOnBalloonDismissListener {  }
+                .build()
+            bd.tvGDHorizon.showAlignTop(balloon)
+            balloon.dismissWithDelay(3000L)
+            balloon.setOnBalloonClickListener { balloon.dismiss() }
+        }
     }
 
     private fun setRatioLineInImage(isVerti: Boolean, switchedOn: Boolean) {
@@ -239,12 +295,12 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                     0 -> {
                         listOf(
                             FaceComparisonItem("양쪽 눈", leftValue.getDouble("resting_eye_horizontal_angle").toFloat(), rightValue.getDouble("resting_eye_horizontal_angle").toFloat()),
-                            FaceComparisonItem("양쪽 눈썹", leftValue.getDouble("resting_eyebrow_horizontal_angle").toFloat(), rightValue.getDouble("resting_eyebrow_horizontal_angle").toFloat()),
+//                            FaceComparisonItem("양쪽 눈썹", leftValue.getDouble("resting_eyebrow_horizontal_angle").toFloat(), rightValue.getDouble("resting_eyebrow_horizontal_angle").toFloat()),
                             FaceComparisonItem("양쪽 입술", leftValue.getDouble("resting_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("resting_tip_of_lips_horizontal_angle").toFloat()),
                             FaceComparisonItem("턱 끝", leftValue.getDouble("resting_tip_of_chin_horizontal_angle").toFloat(), rightValue.getDouble("resting_tip_of_chin_horizontal_angle").toFloat()),
                             FaceComparisonItem("왼쪽 눈매 - 입술 끝", leftValue.getDouble("resting_canthus_oral_left_vertical_angle").toFloat(), rightValue.getDouble("resting_canthus_oral_left_vertical_angle").toFloat()),
-
                             FaceComparisonItem("오른쪽 눈매 - 입술 끝", leftValue.getDouble("resting_canthus_oral_right_vertical_angle").toFloat(), rightValue.getDouble("resting_canthus_oral_right_vertical_angle").toFloat()),
+
                             FaceComparisonItem("왼쪽 코끝 - 입술 끝", leftValue.getDouble("resting_nasal_wing_tip_of_lips_left_vertical_angle").toFloat(), rightValue.getDouble("resting_nasal_wing_tip_of_lips_left_vertical_angle").toFloat()),
                             FaceComparisonItem("오른쪽 코끝 - 입술 끝", leftValue.getDouble("resting_nasal_wing_tip_of_lips_right_vertical_angle").toFloat(), rightValue.getDouble("resting_nasal_wing_tip_of_lips_right_vertical_angle").toFloat()),
                             FaceComparisonItem("왼쪽 볼 너비", leftValue.getDouble("resting_left_cheeks_extent").toFloat(), rightValue.getDouble("resting_left_cheeks_extent").toFloat()),
@@ -254,7 +310,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                     1 -> {
                         listOf(
                             FaceComparisonItem("양쪽 눈", leftValue.getDouble("occlusal_eye_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eye_horizontal_angle").toFloat()),
-                            FaceComparisonItem("양쪽 눈썹", leftValue.getDouble("occlusal_eyebrow_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eyebrow_horizontal_angle").toFloat()),
+//                            FaceComparisonItem("양쪽 눈썹", leftValue.getDouble("occlusal_eyebrow_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eyebrow_horizontal_angle").toFloat()),
                             FaceComparisonItem("양쪽 입술", leftValue.getDouble("occlusal_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_tip_of_lips_horizontal_angle").toFloat()),
                             FaceComparisonItem("턱 끝", leftValue.getDouble("occlusal_tip_of_chin_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_tip_of_chin_horizontal_angle").toFloat()),
                             FaceComparisonItem("왼쪽 눈매 - 입술 끝", leftValue.getDouble("occlusal_canthus_oral_left_vertical_angle").toFloat(), rightValue.getDouble("occlusal_canthus_oral_left_vertical_angle").toFloat()),
@@ -301,7 +357,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                     0 -> {
                         listOf(
                             FaceComparisonItem("양쪽 눈", leftValue.getDouble("resting_eye_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eye_horizontal_angle").toFloat()),
-                            FaceComparisonItem("양쪽 눈썹", leftValue.getDouble("resting_eyebrow_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eyebrow_horizontal_angle").toFloat()),
+//                            FaceComparisonItem("양쪽 눈썹", leftValue.getDouble("resting_eyebrow_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_eyebrow_horizontal_angle").toFloat()),
                             FaceComparisonItem("양쪽 입술", leftValue.getDouble("resting_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_tip_of_lips_horizontal_angle").toFloat()),
                             FaceComparisonItem("턱 끝", leftValue.getDouble("resting_tip_of_chin_horizontal_angle").toFloat(), rightValue.getDouble("occlusal_tip_of_chin_horizontal_angle").toFloat()),
                             FaceComparisonItem("왼쪽 눈매 - 입술 끝", leftValue.getDouble("resting_canthus_oral_left_vertical_angle").toFloat(), rightValue.getDouble("occlusal_canthus_oral_left_vertical_angle").toFloat()),
@@ -549,7 +605,8 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 
             tv.setOnSingleClickListener {
                 ivm.setSeqIndex(indexx)
-                Log.v("클릭됨", "${tv.text}, ${ivm.getSeqIndex()}")
+                ivm.currentCheckedLines.clear()
+                if (bd.msGD.isChecked) bd.msGD.isChecked = false
 
                 // 모든 버튼 텍스트 색상 갱신
                 btns.forEachIndexed { i, t ->
@@ -585,7 +642,9 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 
             tv.setOnSingleClickListener {
                 ivm.setSeqIndex(indexx)
-                Log.v("클릭됨", "${tv.text}, ${ivm.getSeqIndex()}")
+                // checkbox 해제
+                ivm.currentCheckedLines.clear()
+                if (bd.msGD.isChecked) bd.msGD.isChecked = false
 
                 // 모든 버튼 텍스트 색상 갱신
                 btns.forEachIndexed { i, t ->

@@ -27,11 +27,55 @@ class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonIt
     var faceStaticCheckListener: OnFaceStaticCheckListener? = null
     var adapterMoreClickedListener : OnAdapterMoreClickListener? = null
     var isExpanded = false
-    private val linkedCheckMap = mapOf(
-
-        5 to 6, 6 to 5,
-        7 to 8, 8 to 7,
-        9 to 10, 10 to 9,
+    private val linkedCheckDetailMap = listOf(
+        mapOf(
+            3 to listOf(4), 4 to listOf(3),
+            5 to listOf(6), 6 to listOf(5),
+            7 to listOf(8), 8 to listOf(7)
+        ),
+        mapOf(
+            0 to listOf(1, 2, 3),
+            1 to listOf(0, 2, 3),
+            2 to listOf(0, 1, 3),
+            3 to listOf(0, 1, 2)
+        ),
+        mapOf(
+            0 to listOf(1),
+            1 to listOf(0)
+        )
+    )
+    private val linkedCheckComparisonMap = listOf(
+        mapOf(
+            3 to listOf(4), 4 to listOf(3),
+            5 to listOf(6), 6 to listOf(5),
+            7 to listOf(8), 8 to listOf(7)
+        ),
+        mapOf(
+            3 to listOf(4), 4 to listOf(3),
+            5 to listOf(6), 6 to listOf(5),
+            7 to listOf(8), 8 to listOf(7)
+        ),
+        mapOf(
+            0 to listOf(1, 2, 3),
+            1 to listOf(0, 2, 3),
+            2 to listOf(0, 1, 3),
+            3 to listOf(0, 1, 2)
+        ),
+        mapOf(
+            0 to listOf(1, 2, 3),
+            1 to listOf(0, 2, 3),
+            2 to listOf(0, 1, 3),
+            3 to listOf(0, 1, 2)
+        ),
+        mapOf(
+            0 to listOf(1),
+            1 to listOf(0)
+        ),
+        mapOf(
+            0 to listOf(0),
+            1 to listOf(1),
+            2 to listOf(2)
+        )
 
     )
     companion object {
@@ -54,10 +98,14 @@ class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonIt
             val df = DecimalFormat("#.##")
             cbFSITitle.text = item.label
 
-
             // state 확인
-            val seq0Data = df.format(item.leftValue) + if (item.label in listOf("왼쪽 중간 턱", "오른쪽 중간 턱", "입 높이", "볼 너비")) "cm" else "˚"
-            val seq1Data = df.format(item.rightValue) + if (item.label in listOf("왼쪽 중간 턱", "오른쪽 중간 턱", "입 높이", "볼 너비")) "cm" else "˚"
+            val notation = when (item.label) {
+                in listOf("왼쪽 중간 턱", "오른쪽 중간 턱", "입 높이") -> { "cm" }
+                in listOf("왼쪽 볼 너비", "오른쪽 볼 너비") -> "㎠"
+                else -> "˚"
+            }
+            val seq0Data = df.format(item.leftValue) + notation
+            val seq1Data = df.format(item.rightValue) + notation
             tvFSI0.text = seq0Data
             tvFSI1.text = seq1Data
 
@@ -66,6 +114,25 @@ class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonIt
                 tvFSITitle0.text =  leftTitle
                 val rightTitle = "오른쪽 ${basicInfo.second.substring(5, 10).replace("-", "월 ")}일"
                 tvFSITitle1.text = rightTitle
+
+                // 비교일 때
+                cbFSITitle.setOnCheckedChangeListener(null)
+                cbFSITitle.isChecked = item.isChecked
+
+                cbFSITitle.setOnCheckedChangeListener { _, isChecked ->
+                    item.isChecked = isChecked
+                    faceStaticCheckListener?.onFaceStaticCheck(position, isChecked)
+
+                    // 연결된 아이템 체크 연동
+                    linkedCheckComparisonMap[seqValue][position]?.forEach { linkedPos ->
+                        val linkedItem = faceComparisonItems[linkedPos]
+                        if (linkedItem.isChecked != isChecked) {
+                            linkedItem.isChecked = isChecked
+                            notifyItemChanged(linkedPos)
+                        }
+                    }
+                }
+
             } else {
                 // 상세보기일 때
                 val leftTitle = when (seqValue) {
@@ -77,52 +144,52 @@ class FaceStaticRVAdapter(private val faceComparisonItems: List<FaceComparisonIt
                 val rightTitle = when (seqValue) {
                     0 -> "교합 상태"
                     else -> "턱 오른쪽 쏠림"
-
                 }
                 tvFSITitle1.text =  rightTitle
-            }
 
-            clFSI.setOnSingleClickListener {
-                cbFSITitle.performClick()
-            }
-            tvFSI0.setTypeface(null, Typeface.NORMAL)
-            tvFSI1.setTypeface(null, Typeface.NORMAL)
-            if (item.leftValue != null && item.rightValue != null) {
-                when {
-                    item.label in listOf("볼 너비", "중간 턱", "입 높이") -> {
-                        Log.v("값들", "양쪽: ${abs(item.leftValue)}, ${abs(item.rightValue)}")
-                        if (abs(item.leftValue) < abs(item.rightValue)) {
-                            tvFSI1.setTypeface(null, Typeface.BOLD)
-                        } else {
-                            tvFSI0.setTypeface(null, Typeface.BOLD)
+                clFSI.setOnSingleClickListener {
+                    cbFSITitle.performClick()
+                }
+                tvFSI0.setTypeface(null, Typeface.NORMAL)
+                tvFSI1.setTypeface(null, Typeface.NORMAL)
+                if (item.leftValue != null && item.rightValue != null) {
+                    when {
+                        item.label in listOf("볼 너비", "중간 턱", "입 높이") -> {
+//                            Log.v("값들", "양쪽: ${abs(item.leftValue)}, ${abs(item.rightValue)}")
+                            if (abs(item.leftValue) < abs(item.rightValue)) {
+                                tvFSI1.setTypeface(null, Typeface.BOLD)
+                            } else {
+                                tvFSI0.setTypeface(null, Typeface.BOLD)
+                            }
                         }
-                    }
-                    else -> { // item.label.contains("거리")
-                        Log.v("값들", "거리: ${abs(item.leftValue)}, ${abs(item.rightValue)}")
+                        else -> { // item.label.contains("거리")
+//                            Log.v("값들", "거리: ${abs(item.leftValue)}, ${abs(item.rightValue)}")
 
-                        if (abs(item.leftValue) > abs(item.rightValue)) {
-                            tvFSI1.setTypeface(null, Typeface.BOLD)
-                        } else {
-                            tvFSI0.setTypeface(null, Typeface.BOLD)
+                            if (abs(item.leftValue) > abs(item.rightValue)) {
+                                tvFSI1.setTypeface(null, Typeface.BOLD)
+                            } else {
+                                tvFSI0.setTypeface(null, Typeface.BOLD)
+                            }
                         }
                     }
                 }
-            }
-            cbFSITitle.setOnCheckedChangeListener(null)
-            cbFSITitle.isChecked = item.isChecked
+                cbFSITitle.setOnCheckedChangeListener(null)
+                cbFSITitle.isChecked = item.isChecked
 
-            cbFSITitle.setOnCheckedChangeListener { _, isChecked ->
-                item.isChecked = isChecked
-                faceStaticCheckListener?.onFaceStaticCheck(position, isChecked)
+                cbFSITitle.setOnCheckedChangeListener { _, isChecked ->
+                    item.isChecked = isChecked
+                    faceStaticCheckListener?.onFaceStaticCheck(position, isChecked)
 
-                // 연결된 아이템 체크 연동
-                linkedCheckMap[position]?.let { linkedPos ->
-                    val linkedItem = faceComparisonItems[linkedPos]
-                    if (linkedItem.isChecked != isChecked) {
-                        linkedItem.isChecked = isChecked
-                        notifyItemChanged(linkedPos)
+                    // 연결된 아이템 체크 연동
+                    linkedCheckDetailMap[seqValue][position]?.forEach { linkedPos ->
+                        val linkedItem = faceComparisonItems[linkedPos]
+                        if (linkedItem.isChecked != isChecked) {
+                            linkedItem.isChecked = isChecked
+                            notifyItemChanged(linkedPos)
+                        }
                     }
                 }
+
             }
             // 입 벌림, 턱 들어올림 일 때 오른쪾 아이템 없애기
             if (item.label in listOf("입 높이", "입 각도", "양 어깨", "양 귀", "목 각도")) {

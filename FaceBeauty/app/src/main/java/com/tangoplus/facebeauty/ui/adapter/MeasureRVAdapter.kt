@@ -82,8 +82,8 @@ class MeasureRVAdapter(private val context: Context, private val faceResults: Li
                         Log.v("담은 것들", "${mvm.tempComparisonItems.value?.size}")
                     }
                     false -> {
-                        holder.clMI.background = ContextCompat.getDrawable(context, R.drawable.effect_20)
-                        holder.ivMICheck.visibility = View.INVISIBLE
+//                        holder.clMI.background = ContextCompat.getDrawable(context, R.drawable.effect_20)
+//                        holder.ivMICheck.visibility = View.INVISIBLE
                         measureClickListener?.onMeasureClick(currentItem.tempServerSn)
                     }
                 }

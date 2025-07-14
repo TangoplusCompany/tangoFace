@@ -18,7 +18,7 @@
         android:backgroundTint="@color/subColor100"
         android:orientation="horizontal"
         android:padding="10dp"
-        android:visibility="visible"
+        android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

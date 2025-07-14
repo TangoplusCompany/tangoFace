@@ -98,38 +98,49 @@ class MainViewModel : ViewModel() {
     }
 
     // 초기 db에서 데이터 전부 담기 + adapter에서 쓸 DTO 만들기
-    val currentFaceResults = mutableListOf<FaceResult>()
-    val displayList = MutableLiveData<List<FaceDisplay>>()
+//    val currentFaceResults = mutableListOf<FaceResult>()
+
+
+
+    val currentFaceDisplays = mutableListOf<FaceDisplay>()
     val dataLoadComplete = MutableLiveData<Boolean>()
     fun loadDataFromDB(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             val dao = FaceDatabase.getDatabase(context).faceDao()
-            val allData = dao.getAllData()
+            val allData = dao.getAllDisplayData()
 
-            currentFaceResults.clear()
-            Log.v("전부", "${allData.map { it.temp_server_sn }}")
-            val aa = convertToFaceResults(context, allData)
-            aa.forEach {
-                currentFaceResults.add(it)
-            }
-            currentFaceResults.sortByDescending { it.tempServerSn }
-
-            val displayItems = currentFaceResults.map {
-                FaceDisplay(
-                    tempServerSn = it.tempServerSn,
-                    userName = it.userName,
-                    userMobile = it.userMobile,
-                    regDate = it.regDate
-                )
-            }
-            displayList.postValue(displayItems)
+            currentFaceDisplays.clear()
+            currentFaceDisplays.addAll(allData)
+            currentFaceDisplays.sortByDescending { it.tempServerSn }
+            Log.v("currentDisplays", "${currentFaceDisplays.map { it.tempServerSn }}")
+//            val allData = dao.getAllData()
+//
+//            currentFaceResults.clear()
+//            Log.v("전부", "${allData.map { it.temp_server_sn }}")
+//            val aa = convertToFaceResults(context, allData)
+//            aa.forEach {
+//                currentFaceResults.add(it)
+//            }
+//            currentFaceResults.sortByDescending { it.tempServerSn }
+//
+//            val displayItems = currentFaceResults.map {
+//                FaceDisplay(
+//                    tempServerSn = it.tempServerSn,
+//                    userName = it.userName,
+//                    userMobile = it.userMobile,
+//                    regDate = it.regDate
+//                )
+//            }
+//            displayList.postValue(displayItems)
 
             dataLoadComplete.postValue(true)
 
         }
     }
 
-    private fun convertToFaceResult(context: Context, faceStatics: List<FaceStatic>): FaceResult {
+
+
+    fun convertToFaceResult(context: Context, faceStatics: List<FaceStatic>): FaceResult {
         val imageUris = mutableListOf<Uri?>()
         val jsonArray = JSONArray()
 
@@ -156,7 +167,7 @@ class MainViewModel : ViewModel() {
                 jsonArray.put(JSONObject())
             }
         }
-        Log.v("results?", "${jsonArray.length()}, $jsonArray")
+        Log.v("results?", "${jsonArray.length()}")
         return FaceResult(
             tempServerSn = faceStatics[0].temp_server_sn,
             userName = faceStatics[0].user_name,
@@ -167,22 +178,22 @@ class MainViewModel : ViewModel() {
         )
     }
 
-    private fun convertToFaceResults(context: Context,  faceStaticList: List<FaceStatic>): List<FaceResult> {
-
-        val existingTempServerSns = currentFaceResults.map { it.tempServerSn }.toSet()
-
-        // temp_server_sn으로 그룹화하되, 이미 존재하는 것은 제외
-        val groupedData = faceStaticList
-            .filter { it.temp_server_sn >= 0 && !existingTempServerSns.contains(it.temp_server_sn) }
-            .groupBy { it.temp_server_sn }
-
-        Log.v("그룹된데이터", "$groupedData")
-        Log.v("기존데이터", "기존 tempServerSns: $existingTempServerSns")
-
-        return groupedData.map { (_, faceStatics) ->
-            convertToFaceResult(context, faceStatics)
-        }
-    }
+//    private fun convertToFaceResults(context: Context,  faceStaticList: List<FaceStatic>): List<FaceResult> {
+//
+//        val existingTempServerSns = currentFaceResults.map { it.tempServerSn }.toSet()
+//
+//        // temp_server_sn으로 그룹화하되, 이미 존재하는 것은 제외
+//        val groupedData = faceStaticList
+//            .filter { it.temp_server_sn >= 0 && !existingTempServerSns.contains(it.temp_server_sn) }
+//            .groupBy { it.temp_server_sn }
+//
+//        Log.v("그룹된데이터", "$groupedData")
+//        Log.v("기존데이터", "기존 tempServerSns: $existingTempServerSns")
+//
+//        return groupedData.map { (_, faceStatics) ->
+//            convertToFaceResult(context, faceStatics)
+//        }
+//    }
 
     // 비교일 경우
     private var _comparisonState = MutableLiveData<Boolean>()

@@ -18,9 +18,9 @@ class MeasureViewModel : ViewModel() {
     val mergedJA = JSONArray()
 
     var currentFaceLandmarks = JSONArray()
-    // 현재 얼굴 좌표들 전부 담는 곳 ( 절대 좌표)
-    var currentCoordinate = mutableListOf<Pair<Float, Float>>()
-    var relativeCoordinate = mutableListOf<Pair<Float, Float>>()
+    // 현재 얼굴 좌표들 전부 담는 곳
+    var currentCoordinate = mutableListOf<Pair<Float, Float>>() // 절대 좌표
+    var relativeCoordinate = mutableListOf<Pair<Float, Float>>() // 상대좌표
     // static 데이터 + 좌표값 통합된 JSON
     val staticFileNames = mutableListOf<String>()
 
