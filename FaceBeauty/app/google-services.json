@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "349134091910",
+    "project_id": "face-8a4ca",
+    "storage_bucket": "face-8a4ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:349134091910:android:bf7012fef279786d7a4307",
+        "android_client_info": {
+          "package_name": "com.tangoplus.facebeauty"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfm0FNaE2Ul3ZFZfTDWsxgg09Ya1fbquI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

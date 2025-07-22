@@ -425,6 +425,10 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                 ivm.currentCheckedLines.clear()
             }
         }
+        setImage()
+        showZoomInDialogFragment()
+        setRatioCheckSwitch()
+
 
         bd.rvGD2.apply {
             while (itemDecorationCount > 0) {
@@ -461,9 +465,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 
             adapter  = faceStaticAdapter
         }
-        setImage()
-        showZoomInDialogFragment()
-        setRatioCheckSwitch()
+
     }
 
     private fun setImage() {
@@ -574,20 +576,38 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         } else {
             ivm.currentCheckedLines.clear()
         }
-
         setImage()
     }
 
-    private fun showZoomInDialogFragment() {
-        val leftSeq = if (ivm.getSeqIndex() == 0 ) 0 else 2
-        val rightSeq = if (ivm.getSeqIndex() == 0) 1 else 3
+    private fun showZoomInDialogFragment() { // 0 , 1, 2인데
+        val index = ivm.getSeqIndex()
+        val isComparison = mvm.comparisonDoubleItem != null
+
+        val (leftSeq, rightSeq) = if (mvm.comparisonDoubleItem == null) {
+            val left = index * 2
+            val right = left + 1
+            left to right
+        } else {
+            index to index
+        }
         bd.ssiv1.setOnLongClickListener {
-            val zoomInDialog = ZoomInDialogFragment.newInstance(leftSeq)
+            Log.v("seq와left", "$isComparison")
+            val zoomInDialog = if (!isComparison) {
+                ZoomInDialogFragment.newInstance(leftSeq, null)
+            } else {
+                ZoomInDialogFragment.newInstance(leftSeq, true)
+            }
             zoomInDialog.show(requireActivity().supportFragmentManager, "")
             true
         }
         bd.ssiv2.setOnLongClickListener {
-            val zoomInDialog = ZoomInDialogFragment.newInstance(rightSeq)
+            Log.v("seq와left", "$isComparison")
+
+            val zoomInDialog = if (!isComparison) {
+                ZoomInDialogFragment.newInstance(rightSeq, null)
+            } else {
+                ZoomInDialogFragment.newInstance(rightSeq, false)
+            }
             zoomInDialog.show(requireActivity().supportFragmentManager, "")
             true
         }

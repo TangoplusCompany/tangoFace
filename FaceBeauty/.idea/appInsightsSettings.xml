@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.tangoplus.facebeauty" />
+                  <option name="mobileSdkAppId" value="1:349134091910:android:bf7012fef279786d7a4307" />
+                  <option name="projectId" value="face-8a4ca" />
+                  <option name="projectNumber" value="349134091910" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

@@ -100,8 +100,6 @@ class MainViewModel : ViewModel() {
     // 초기 db에서 데이터 전부 담기 + adapter에서 쓸 DTO 만들기
 //    val currentFaceResults = mutableListOf<FaceResult>()
 
-
-
     val currentFaceDisplays = mutableListOf<FaceDisplay>()
     val dataLoadComplete = MutableLiveData<Boolean>()
     fun loadDataFromDB(context: Context) {
@@ -172,7 +170,7 @@ class MainViewModel : ViewModel() {
             tempServerSn = faceStatics[0].temp_server_sn,
             userName = faceStatics[0].user_name,
             userMobile = faceStatics[0].user_mobile,
-            imageUris = imageUris,
+            mediaUri = imageUris,
             results = jsonArray,
             regDate = faceStatics[0].reg_date
         )

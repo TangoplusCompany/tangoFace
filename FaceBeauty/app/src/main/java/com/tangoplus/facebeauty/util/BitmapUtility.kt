@@ -42,11 +42,11 @@ object BitmapUtility {
     suspend fun setImage(fragment: Fragment, faceResult: FaceResult, seq: Int, ssiv: SubsamplingScaleImageView, ivm: InformationViewModel, isZoomIn: Boolean = false): Boolean = suspendCancellableCoroutine { continuation ->
         try {
             val jsonData = faceResult.results.getJSONObject(seq)
-            Log.v("제이슨0", "${faceResult.results}")
-            Log.v("제이슨1", "seq: $seq, json: $jsonData")
+//            Log.v("제이슨0", "${faceResult.results}")
+//            Log.v("제이슨1", "seq: $seq, json: $jsonData")
             val faceCoordinates = extractFaceCoordinates(jsonData)
             val poseCoordinates = extractPoseCoordinates(jsonData)
-            val imageUri = faceResult.imageUris.get(seq)
+            val imageUri = faceResult.mediaUri.get(seq)
             var isSet = false
 
             if (imageUri != null) {
@@ -88,7 +88,7 @@ object BitmapUtility {
                         abs(leftCheekValue) - abs(rightCheekValue) < 0.05 -> 0
                         else -> 0
                     }
-                    Log.v("볼상태", "$cheeksState, $leftCheekValue $rightCheekValue $cheekDifferenceRatio")
+//                    Log.v("볼상태", "$cheeksState, $leftCheekValue $rightCheekValue $cheekDifferenceRatio")
                     val combinedBitmap = combineImageAndOverlay(
                         bitmap,
                         faceLandmarkResult,
@@ -135,7 +135,7 @@ object BitmapUtility {
     fun combineImageAndOverlay (
         originalBitmap: Bitmap,
         faceLandmarks: FaceLandmarkResult,
-        poseLandmarks: PoseLandmarkResult,
+        poseLandmarks: PoseLandmarkResult?,
         selectedData: MutableSet<DrawLine>,
         ratioLine : DrawRatioLine,
         cfc : MutableList<FaceComparisonItem>,
@@ -291,9 +291,12 @@ object BitmapUtility {
 //        val y31 = bottomLm3.y
 //        drawExtendedLine(canvas, x30, y30, x31, y31, 0f, 50f, axis300Paint)
         // 목젖
-        val midShoulderX = (poseLandmarks.landmarks[11].x + poseLandmarks.landmarks[12].x ) / 2
-        val midShoulderY = (poseLandmarks.landmarks[11].y + poseLandmarks.landmarks[12].y ) / 2
-        drawExtendedLine(canvas, midShoulderX, midShoulderY, midShoulderX, midShoulderY + 1, 500f, 500f, dashedPaint)
+        if (poseLandmarks != null && poseLandmarks.landmarks.isNotEmpty()) {
+            val midShoulderX = (poseLandmarks.landmarks[11].x + poseLandmarks.landmarks[12].x ) / 2
+            val midShoulderY = (poseLandmarks.landmarks[11].y + poseLandmarks.landmarks[12].y ) / 2
+            drawExtendedLine(canvas, midShoulderX, midShoulderY, midShoulderX, midShoulderY + 1, 500f, 500f, dashedPaint)
+        }
+
 
 //        val faceplr = listOf(7, 8, 0, 11, 12, )
 //        val circlePaint1 = Paint().apply {
@@ -523,13 +526,16 @@ object BitmapUtility {
             }
 
             if (selectedData.contains(DrawLine.A_SHOULDER)) {
-                val topLm0 = poseLandmarks.landmarks[11]
-                val bottomLm0 = poseLandmarks.landmarks[12]
-                val x00 = topLm0.x
-                val y00 = topLm0.y
-                val x01 = bottomLm0.x
-                val y01 = bottomLm0.y
-                drawExtendedLine(canvas, x00, y00, x01, y01, 50f, 50f, axis300Paint)
+                if (poseLandmarks != null) {
+                    val topLm0 = poseLandmarks.landmarks[11]
+                    val bottomLm0 = poseLandmarks.landmarks[12]
+                    val x00 = topLm0.x
+                    val y00 = topLm0.y
+                    val x01 = bottomLm0.x
+                    val y01 = bottomLm0.y
+                    drawExtendedLine(canvas, x00, y00, x01, y01, 50f, 50f, axis300Paint)
+                }
+
             }
 
             if (selectedData.contains(DrawLine.A_EAR)) {
@@ -543,16 +549,18 @@ object BitmapUtility {
             }
 
             if (selectedData.contains(DrawLine.A_NECK)) {
-                val topLm0 = poseLandmarks.landmarks[11]
-                val bottomLm0 = poseLandmarks.landmarks[12]
-                val middleShoulderX = (topLm0.x + bottomLm0.x) / 2
-                val middleShoulderY = (topLm0.y + bottomLm0.y) / 2
-                val nose = faceLandmarks.landmarks[1]
-                val x00 = middleShoulderX
-                val y00 = middleShoulderY
-                val x01 = nose.x
-                val y01 = nose.y
-                drawExtendedLine(canvas, x00, y00, x01, y01, 0f, 100f, axis300Paint)
+                if (poseLandmarks != null) {
+                    val topLm0 = poseLandmarks.landmarks[11]
+                    val bottomLm0 = poseLandmarks.landmarks[12]
+                    val middleShoulderX = (topLm0.x + bottomLm0.x) / 2
+                    val middleShoulderY = (topLm0.y + bottomLm0.y) / 2
+                    val nose = faceLandmarks.landmarks[1]
+                    val x00 = middleShoulderX
+                    val y00 = middleShoulderY
+                    val x01 = nose.x
+                    val y01 = nose.y
+                    drawExtendedLine(canvas, x00, y00, x01, y01, 0f, 100f, axis300Paint)
+                }
             }
         } else {
             // ----------------------------------# 비율 계산기 #------------------------------------

@@ -1,6 +1,7 @@
 package com.tangoplus.facebeauty.ui
 
 import android.os.Bundle
+import android.util.Log
 
 import android.view.LayoutInflater
 import android.view.View
@@ -22,12 +23,15 @@ class ZoomInDialogFragment : DialogFragment() {
     private val mvm : MainViewModel by activityViewModels()
 
     companion object {
-    private const val ARG_SEQ = "arguement_sequence"
-        fun newInstance(seq: Int) : ZoomInDialogFragment {
-
+        private const val ARG_SEQ = "arguement_sequence"
+        private const val ARG_COMPARISON = "arguement_comparison"
+        fun newInstance(seq: Int, isLeft: Boolean? = null): ZoomInDialogFragment {
             val fragment = ZoomInDialogFragment()
             val args = Bundle()
             args.putInt(ARG_SEQ, seq)
+            if (isLeft != null) {
+                args.putBoolean(ARG_COMPARISON, isLeft)
+            }
             fragment.arguments = args
             return fragment
         }
@@ -48,9 +52,35 @@ class ZoomInDialogFragment : DialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val seq = arguments?.getInt(ARG_SEQ) ?: 0
+        val isLeft: Boolean? = if (arguments?.containsKey(ARG_COMPARISON) == true) {
+            arguments?.getBoolean(ARG_COMPARISON)
+        } else {
+            null
+        }
 
         lifecycleScope.launch {
-            mvm.currentResult.value?.let { setImage(this@ZoomInDialogFragment, it, seq, binding.ssivZID, ivm, true) }
+            when (isLeft) {
+                true -> {
+                    mvm.comparisonDoubleItem?.first.let {
+                        if (it != null) {
+                            setImage(this@ZoomInDialogFragment, it, seq, binding.ssivZID, ivm, true)
+                        }
+                    }
+                }
+                false -> {
+                    mvm.comparisonDoubleItem?.second.let {
+                        if (it != null) {
+                            setImage(this@ZoomInDialogFragment, it, seq, binding.ssivZID, ivm, true)
+                        }
+                    }
+                }
+                null -> {
+                    mvm.currentResult.value?.let { setImage(this@ZoomInDialogFragment, it, seq, binding.ssivZID, ivm, true) }
+                }
+            }
+
+
+
         }
     }
 }

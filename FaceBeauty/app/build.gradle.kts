@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id ("kotlin-kapt")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -42,6 +44,10 @@ android {
 
 //noinspection UseTomlInstead
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics-ndk")
+
     implementation("com.davemorrissey.labs:subsampling-scale-image-view:3.10.0")
     implementation("com.github.skydoves:progressview:1.1.3")
 
@@ -68,6 +74,10 @@ dependencies {
     implementation("androidx.media3:media3-common:1.2.0")
     implementation("androidx.media3:media3-transformer:1.2.0")
     implementation("androidx.window:window:1.1.0-alpha03")
+
+    implementation("com.google.android.exoplayer:exoplayer:2.19.1")
+    implementation("com.google.android.exoplayer:exoplayer-core:2.19.1")
+    implementation("com.google.android.exoplayer:exoplayer-ui:2.19.1")
 
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-ktx:$roomVersion")

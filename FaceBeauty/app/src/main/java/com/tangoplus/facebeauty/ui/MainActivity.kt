@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.ViewGroup
+import android.widget.Button
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
@@ -41,6 +43,8 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this@MainActivity, CameraActivity::class.java)
             startActivity(intent)
         }
+
+        cacheDir.deleteRecursively()
     }
 
     private var backPressedOnce = false

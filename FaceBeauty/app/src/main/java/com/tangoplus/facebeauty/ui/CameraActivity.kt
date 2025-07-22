@@ -19,6 +19,7 @@ import android.media.ExifInterface
 import android.net.Uri
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -35,6 +36,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -44,7 +46,13 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.core.app.ActivityCompat
+import androidx.camera.video.FileOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoRecordEvent
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -52,6 +60,17 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.audio.ChannelMixingAudioProcessor
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.ScaleAndRotateTransformation
+import androidx.media3.transformer.Composition
+import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.Effects
+import androidx.media3.transformer.ExportException
+import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.Transformer
 import com.airbnb.lottie.LottieDrawable
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -84,6 +103,7 @@ import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import com.tangoplus.facebeauty.util.FileUtility.getImageUriFromFileName
+import com.tangoplus.facebeauty.util.FileUtility.getVideoUriFromFileName
 import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
 import com.tangoplus.facebeauty.util.FileUtility.toJSONObject
 import com.tangoplus.facebeauty.util.MathHelpers.calculateAngle
@@ -93,6 +113,9 @@ import com.tangoplus.facebeauty.util.MathHelpers.getNormalizedDistance
 import com.tangoplus.facebeauty.util.MathHelpers.setScaleFactor
 import com.tangoplus.facebeauty.util.PreferenceUtility
 import com.tangoplus.facebeauty.vision.pose.PoseLandmarkerHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -125,6 +148,10 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraFacing = CameraSelector.LENS_FACING_FRONT
     private var isCountDown = false
+    private lateinit var videoCapture : VideoCapture<Recorder>
+    private var recordingJob: Job? = null
+    private var recording: Recording? = null
+    private var startRecording = false
     // 카메라 플래그
     private var isCameraActive = false
     /** Blocking ML operations are performed using this executor */
@@ -164,22 +191,40 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             }
 
             override fun onFinish() {
+
                 if (latestResult?.result?.faceLandmarks()?.isNotEmpty() == true) {
                     timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
                     hideViews()
-                    if (seqStep.value != null) {
-                        playSound(R.raw.camera_shutter)
-                        lifecycleScope.launch {
-                            captureImage(seqStep.value ?: -1)
-                            latestResult?.let { resultBundleToJson(it, seqStep.value ?: -1) }
-                            viewModel.setSeqFinishedFlag(true)
-                            updateUI()
+                    when (seqStep.value) {
+                        2, 3 -> {
+                            startVideoRecording {
+                                mvm.tempStaticJo = null
+                                // 좌표 초기화
+                                Log.v("녹화 완료", "좌표값: ${mvm.tempCoordinateJA.length()}")
+                                mvm.coordinatesJA.put(mvm.tempCoordinateJA)
+                                mvm.tempCoordinateJA = JSONArray()
+
+                                viewModel.setSeqFinishedFlag(true)
+                                updateUI()
+                                setCameraRecordEndAnimation()
+                            }
+                        }
+                        else -> {
+                            playSound(R.raw.camera_shutter)
+                            lifecycleScope.launch {
+                                captureImage(seqStep.value ?: -1)
+                                latestResult?.let { resultBundleToJson(it, seqStep.value ?: -1) }
+                                viewModel.setSeqFinishedFlag(true)
+                                updateUI()
+                            }
                         }
                     }
                 }
+                Log.v("포즈랜드마크", "${mvm.plrJA.length()}")
             }
         }
     } //  ------! 카운트 다운 끝 !-------
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -352,6 +397,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                 val transStatics = staticJos.map { it.toFaceStatic() } // static으로 변하기 -> json으로 저장 전 파일 이름과 landmark 담아야함
 
                 val mergedJOBeforeFileName = mutableListOf<JSONObject>()
+                Log.v("mvm.plrJA", "${mvm.plrJA.length()}")
                 for (i in 0 until 6) {
                     val mergedJSON = JSONObject().apply {
                         put("data", JSONObject(transStatics[i].toJSONObject()))
@@ -359,22 +405,22 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         put("pose_landmark", mvm.plrJA.getJSONArray(i))
                     }
                     mergedJOBeforeFileName.add(mergedJSON)
-                    val jsonPath = saveJsonToStorage(mergedJSON, mvm.staticFileNames[i].replace(".jpg", ""))
+                    val jsonPath = saveJsonToStorage(mergedJSON, mvm.staticFileNames[i].replace(".jpg", "").replace(".mp4", ""))
                     mergedJOBeforeFileName[i].put("json_file_name", jsonPath)
                     mvm.mergedJA.put(mergedJOBeforeFileName[i])
                 }
 
-                Log.v("mvm.mergedJson", "${mvm.mergedJA}")
+                Log.v("mvm.mergedJson", "${mvm.mergedJA.length()}")
                 // faceResult 객체 1개의 날짜 정함
                 val finishedResult = FaceResult(
                     tempServerSn = prefsUtil.getNextTempServerSn(),
                     userName = ivm.nameValue.value,
                     userMobile = ivm.mobileValue.value,
-                    imageUris = listOf(
+                    mediaUri = listOf(
                         getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[0]),
                         getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[1]),
-                        getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[2]),
-                        getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[3]),
+                        getVideoUriFromFileName(this@CameraActivity, mvm.staticFileNames[2]),
+                        getVideoUriFromFileName(this@CameraActivity, mvm.staticFileNames[3]),
                         getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[4]),
                         getImageUriFromFileName(this@CameraActivity, mvm.staticFileNames[5]),
                     ),
@@ -392,8 +438,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     val static3 = mvm.mergedJA.getJSONObject(3).getJSONObject("data").toFaceStatic()
                     val static4 = mvm.mergedJA.getJSONObject(4).getJSONObject("data").toFaceStatic()
                     val static5 = mvm.mergedJA.getJSONObject(5).getJSONObject("data").toFaceStatic()
-                    Log.v("static0", "변환완료: $static0")
-                    Log.v("static1", "변환완료: $static1")
                     Log.v("static2", "변환완료: $static2")
                     Log.v("static3", "변환완료: $static3")
                     fDao.insertStatic(static0)
@@ -410,7 +454,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         startActivity(intent)
 //                        releaseResources()
                         finishAffinity()
-
                     }
                 }
             } else {
@@ -489,6 +532,11 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             .setTargetResolution(Size(1280, 720))
             .setTargetRotation(binding.viewFinder.display.rotation)
             .build()
+        videoCapture = VideoCapture.withOutput(
+            Recorder.Builder()
+                .setQualitySelector(QualitySelector.from(Quality.HD))
+                .build()
+        )
         // Must unbind the use-cases before rebinding them
         cameraProvider.unbindAll()
 
@@ -496,7 +544,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             // A variable number of use-cases can be passed here -
             // camera provides access to CameraControl & CameraInfo
             camera = cameraProvider.bindToLifecycle(
-                this, cameraSelector, preview, imageAnalyzer, imageCapture,
+                this, cameraSelector, preview, imageAnalyzer, imageCapture, videoCapture
             )
 
             // Attach the viewfinder's surface provider to preview use case
@@ -510,6 +558,9 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             imageProxy = imageProxy,
             isFrontCamera = cameraFacing == CameraSelector.LENS_FACING_FRONT
         )
+        if (startRecording && latestResult != null) {
+            resultBundleToJson(latestResult, seqStep.value?: -1)
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -530,6 +581,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         }
     }
 
+    var eyeClosedStartTime: Long? = null
     override fun onResults(
         resultBundle: FaceLandmarkerHelper.ResultBundle
     ) {
@@ -600,6 +652,37 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
 //                Log.v("eye평행", "$eyeSlope ${eyeParallel}, ${vertiBoolean}, ")
                 binding.overlay.setVerti(vertiMediator)
+
+                // 영상 녹화 시 체크 하기
+                if (startRecording) {
+
+
+                    val leftTopEye = faceLandmarks[159].y()
+                    val leftBottomEye = faceLandmarks[145].y()
+
+                    val rightTopEye = faceLandmarks[386].y()
+                    val rightBottomEye = faceLandmarks[374].y()
+
+                    val eyeThreshold = 0.01f // 실험적으로 조정 필요
+
+                    val leftEyeClosed = abs(leftTopEye - leftBottomEye) < eyeThreshold
+                    val rightEyeClosed = abs(rightTopEye - rightBottomEye) < eyeThreshold
+                    val bothEyesClosed = leftEyeClosed && rightEyeClosed
+                    val currentTime = System.currentTimeMillis()
+                    Log.v("눈높이 차이", "${abs(leftTopEye - leftBottomEye)} < 0.015f , $currentTime, $bothEyesClosed, $eyeClosedStartTime")
+                    if (bothEyesClosed) {
+                        if (eyeClosedStartTime == null) {
+                            eyeClosedStartTime = currentTime
+                        } else {
+                            val elapsed = currentTime - (eyeClosedStartTime ?: 0L)
+                            Log.v("눈감고1초", "$elapsed 눈감고 1초가 지남 stopVideoRecording")
+                            if (elapsed >= 700) {
+                                Log.v("눈감고1초", "눈감고 1초가 지남 stopVideoRecording")
+                                stopVideoRecording()
+                            }
+                        }
+                    } else eyeClosedStartTime = null
+                }
             }
 
             binding.overlay.setResults(
@@ -612,8 +695,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 //            Log.v("results", "${resultBundle.result.faceLandmarks().map { it.size }}")
             // Force a redraw
             binding.overlay.invalidate()
-
-            // overlay 줌인과
 
             if (ivm.isFinishInput && isFaceCenter && resultBundle.result.faceLandmarks().isNotEmpty() && !viewModel.getSeqFinishedFlag()) {
                 // 애니메이션 제거 flag
@@ -687,7 +768,24 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
     // -------------------------# 타이머, UI업데이트, 이미지캡처, 결과처리 #-----------------------------
     private fun hideViews() {
         binding.clCountDown.visibility = View.INVISIBLE
-        startCameraShutterAnimation()
+
+        when (seqStep.value) {
+            2, 3 -> startCameraRecordAnimation()
+            else -> startCameraShutterAnimation()
+        }
+    }
+    private fun startCameraRecordAnimation() {
+        binding.cvRecordMark.visibility = View.VISIBLE
+        binding.tvGoGallery.visibility = View.GONE
+        binding.tvRetry.visibility = View.GONE
+        binding.tvSeqCount.visibility = View.GONE
+    }
+
+    private fun setCameraRecordEndAnimation() {
+        binding.cvRecordMark.visibility = View.GONE
+        binding.tvGoGallery.visibility = View.VISIBLE
+        binding.tvRetry.visibility = View.VISIBLE
+        binding.tvSeqCount.visibility = View.VISIBLE
     }
 
     private fun startCameraShutterAnimation() {
@@ -836,7 +934,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     object : ImageCapture.OnImageSavedCallback {
                         override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                             val tempUri = Uri.fromFile(tempFile)
-                            saveMediaToStorage(this@CameraActivity, tempUri, name)
+                            saveMediaToStorage(this@CameraActivity, tempUri, name, true)
                             continuation.resume(true)
                         }
 
@@ -876,68 +974,67 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         }
     }
 
-    fun saveMediaToStorage(context: Context, uri: Uri, fileName: String) {
+    fun saveMediaToStorage(context: Context, uri: Uri, fileName: String, isImage: Boolean) {
         try {
-            val extension = ".jpg"
+            val extension = if (isImage) ".jpg" else ".mp4"
+            val file = File(context.cacheDir, "$fileName$extension")
 
-            // Pictures/TangoBeauty에 저장할 ContentValues 설정
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, "$fileName$extension")
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/TangoPlus")
-            }
-
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val tempFile = File.createTempFile("tempImage", null, context.cacheDir)
-            inputStream?.use { input ->
-                tempFile.outputStream().use { output ->
-                    input.copyTo(output)
+            if (isImage) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, "$fileName$extension")
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                    put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/TangoPlus")
                 }
-            }
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val tempFile = File.createTempFile("tempImage", null, context.cacheDir)
+                inputStream?.use { input ->
+                    tempFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
 
-            // EXIF 데이터 읽기
-            val exif = ExifInterface(tempFile.absolutePath)
-            val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-            Log.d("ExifDebug", "Exif Orientation: $orientation")
+                // EXIF 데이터 읽기
+                val exif = ExifInterface(tempFile.absolutePath)
+                val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+//                Log.d("ExifDebug", "Exif Orientation: $orientation")
+                // 비트맵 디코딩
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                BitmapFactory.decodeFile(tempFile.absolutePath, options)
 
-            // 비트맵 디코딩
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-            BitmapFactory.decodeFile(tempFile.absolutePath, options)
-
-            val sourceWidth = options.outWidth
-            val sourceHeight = options.outHeight
+                val sourceWidth = options.outWidth
+                val sourceHeight = options.outHeight
 
             val targetWidth = 1280
             val targetHeight = 720
 
-            // 이미지 스케일 계산
-            val widthRatio = sourceWidth.toFloat() / targetWidth
-            val heightRatio = sourceHeight.toFloat() / targetHeight
-            val scale = maxOf(widthRatio, heightRatio)
+                // 이미지 스케일 계산
+                val widthRatio = sourceWidth.toFloat() / targetWidth
+                val heightRatio = sourceHeight.toFloat() / targetHeight
+                val scale = maxOf(widthRatio, heightRatio)
 
-            options.inJustDecodeBounds = false
-            options.inSampleSize = scale.toInt()
+                options.inJustDecodeBounds = false
+                options.inSampleSize = scale.toInt()
 
-            var bitmap = BitmapFactory.decodeFile(tempFile.absolutePath, options)
-            val matrix = Matrix()
+                var bitmap = BitmapFactory.decodeFile(tempFile.absolutePath, options)
+                val matrix = Matrix()
 
-            // 회전 적용
-            when (orientation) {
-                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)   // 시계 방향 90도
-                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f) // 시계 방향 180도
-                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f) // 시계 방향 270도
-            }
+                // 회전 적용
+                when (orientation) {
+                    ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)   // 시계 방향 90도
+                    ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f) // 시계 방향 180도
+                    ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f) // 시계 방향 270도
+                }
 
-            // ★★★ 좌우반전 ★★★
-            matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+                // ★★★ 좌우반전 ★★★
+                matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
 
-            // 모든 변환을 한번에 적용
-            bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                // 모든 변환을 한번에 적용
+                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
-            // 스케일 조정
-            bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
+                // 스케일 조정
+                bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
 
             // Pictures/TangoBeauty에 저장
             val imageUri = context.contentResolver.insert(
@@ -950,15 +1047,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             val resultBundle = poseLandmarker.detectImage(bitmap)
             if (resultBundle?.results?.first()?.landmarks()?.isNotEmpty() == true) {
                 val plr = resultBundle.results.first().landmarks()[0]
-//                    val tempLandmarks = mutableMapOf<Int, Triple<Float, Float, Float>>()
-//                    // 원시데이터 pose 33개
-//                    plr.forEachIndexed { index, poseLandmark ->
-//                        tempLandmarks[index] = Triple(
-//                            poseLandmark.x(),
-//                            poseLandmark.y(),
-//                            poseLandmark.z()
-//                        )
-//                    }
+
                 mvm.tempPlrJA = JSONArray()
                 plr.forEachIndexed { index, _ ->
                     val swapIndex = if (index >= 7 && index % 2 == 0) index - 1 // 짝수인 경우 뒤의 홀수 인덱스로 교체
@@ -979,14 +1068,14 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         put("wz", targetLandmark.z())
                     }
 
-//                    if (index in listOf(7, 8, 11, 12)) {
-//                        Log.v("포즈 들가자", "${index} : (${calculateScreenX(targetLandmark.x()).roundToInt()}, ${calculateScreenY(targetLandmark.y()).roundToInt()})")
-//                    }
                     mvm.tempPlrJA.put(jo)
                     mvm.currentPlrCoordinate.add(Pair(targetLandmark.x(), targetLandmark.y())) // 33 개가 다 담김
                 }
                 // 마지막 자세만 값 저장
                 mvm.plrJA.put(mvm.tempPlrJA)
+            } else {
+                // pose 검출이 안됐을 경우 빈 리스트 넣기
+                mvm.plrJA.put(JSONArray())
             }
             // -------------------------# 목젖 위치를 잡기 위한 detectAsync 끝 #-----------------------
             imageUri?.let { imageURI ->
@@ -1006,6 +1095,33 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             tempFile.delete()
             bitmap.recycle()
 
+            }  else {
+                val videoCollection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Video.Media.DISPLAY_NAME, fileName)  // ex: my_video.mp4
+                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                    put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES) // Movies/
+                    put(MediaStore.Video.Media.IS_PENDING, 1)
+                }
+
+                val videoUri = context.contentResolver.insert(videoCollection, contentValues)
+
+                if (videoUri != null) {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        context.contentResolver.openOutputStream(videoUri)?.use { output ->
+                            input.copyTo(output)
+
+                            contentValues.clear()
+                            contentValues.put(MediaStore.Video.Media.IS_PENDING, 0)
+                            context.contentResolver.update(videoUri, contentValues, null, null)
+
+                            mvm.staticFileNames.add("$fileName$extension")
+                            mvm.plrJA.put(JSONArray())
+                            Log.v("영상작업완료 후 plr넣기", "${mvm.plrJA.length()}")
+                        }
+                    }
+                }
+            }
         } catch (e: IndexOutOfBoundsException) {
             Log.e("SaveMediaIndex", "${e.message}")
         } catch (e: IllegalArgumentException) {
@@ -1058,7 +1174,133 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         }
     }
 
+    private fun stopVideoRecording() {
+        recordingJob?.cancel() // Cancel the coroutine if needed
+        val curRecording = recording
+        if (curRecording != null) {
+            curRecording.stop()
+            recording = null
+        }
+    }
+    private fun startRecordingMaxTimer() {
+        lifecycleScope.launch(Dispatchers.Main) {
+            delay(4000) // 8초가 max 영상 길이
+            stopVideoRecording()
+        }
+    }
+    private fun startVideoRecording(callback: () -> Unit) {
+        recordingJob = CoroutineScope(Dispatchers.IO).launch {
+            val videoCapture = this@CameraActivity.videoCapture
+            val curRecording = recording
+            if (curRecording != null) {
+                curRecording.stop()
+                recording = null
+                return@launch
+            }
 
+            val outputFile = File(cacheDir, "$timestamp.mp4")
+            val fileOutputOptions = FileOutputOptions.Builder(outputFile).build()
+
+
+            // Start recording video with audio
+            recording = videoCapture.output.prepareRecording(this@CameraActivity, fileOutputOptions)
+                .start(ContextCompat.getMainExecutor(this@CameraActivity)) { recordEvent ->
+                    when (recordEvent) {
+                        is VideoRecordEvent.Start -> {
+                            CoroutineScope(Dispatchers.Main).launch {
+                                startRecording = true
+                                startRecordingMaxTimer()
+                                Log.v("startRecording", "startRecording ${startRecording}")
+                            }
+                        }
+                        is VideoRecordEvent.Finalize -> {
+                            startRecording = false
+                            if (!recordEvent.hasError()) {
+                                Log.v("startRecording", "finish Recording")
+
+                                val inputPath = outputFile.absolutePath // cache에 저장된 원본
+                                val outputPath = File(cacheDir, "mirrored_video.mp4").absolutePath
+
+                                flipVideoHorizontally(inputPath, outputPath) { success ->
+                                    if (success) {
+                                        saveMediaToStorage(this@CameraActivity, Uri.fromFile(File(outputPath)), getFileName(seqStep.value ?: 0) + ".mp4", false)
+                                        callback()
+                                    } else {
+                                        Log.e(TAG, "Failed to apply mirror effect to video.")
+                                    }
+                                }
+                            } else {
+                                Log.v("startRecording", "finish Recording but has error")
+                                CoroutineScope(Dispatchers.Main).launch  {
+                                    recording?.close()
+                                    recording = null
+                                    Log.e(TAG, "Video capture ends with error: ${recordEvent.error}")
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+    }
+    @UnstableApi
+    private fun flipVideo(
+        inputPath: String,
+        outputPath: String,
+        onSuccess: (File) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        // 입력 비디오 URI 생성
+        val inputUri = Uri.fromFile(File(inputPath))
+        val mediaItem = MediaItem.fromUri(inputUri)
+
+        val flipEffect = ScaleAndRotateTransformation.Builder()
+            .setScale(-1f, 1f)
+            .build()
+        val effects = Effects(
+            listOf(ChannelMixingAudioProcessor()),
+            listOf(flipEffect)
+        )
+        val editedMediaItem = EditedMediaItem.Builder(mediaItem)
+            .setEffects(effects)
+            .build()
+
+        val transformer = Transformer.Builder(this@CameraActivity)
+            .setVideoMimeType(MimeTypes.VIDEO_H264)
+            .addListener(object : Transformer.Listener {
+                override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+                    super.onCompleted(composition, exportResult)
+                    onSuccess(File(outputPath))
+                }
+
+                override fun onError(
+                    composition: Composition,
+                    exportResult: ExportResult,
+                    exportException: ExportException
+                ) {
+                    super.onError(composition, exportResult, exportException)
+                    onError(exportException.message ?: "Unknown error")
+                }
+            }).build()
+        transformer.start(editedMediaItem, outputPath)
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun flipVideoHorizontally(inputPath: String, outputPath: String, callback: (Boolean) -> Unit) {
+        CoroutineScope(Dispatchers.Main).launch {
+            flipVideo(
+                inputPath = inputPath,
+                outputPath = outputPath,
+                onSuccess = { file ->
+                    callback(true)
+                    println("비디오 플립 성공: ${file.path}")
+                },
+                onError = { errorMessage ->
+                    callback(false)
+                    println("비디오 크롭 실패: $errorMessage")
+                },
+            )
+        }
+    }
 
     fun resultBundleToJson(resultBundle: FaceLandmarkerHelper.ResultBundle?, step: Int) {
         if (scaleFactorX == null && scaleFactorY == null) {
@@ -1085,30 +1327,64 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             *  5. 값 계산에서는 왼쪽의 기울기는 second 혹은 1번 index 임.
             *  6. 이를 일치 시키려면? -> mvm에 들어가는 인자들을 거울모드로 변경 -> 값들은 원상복귀
             * */
-            Log.v("현재렌즈위치", "$cameraFacing == 정면${CameraSelector.LENS_FACING_FRONT}, 후면${CameraSelector.LENS_FACING_BACK}")
+//            Log.v("현재렌즈위치", "$cameraFacing == 정면${CameraSelector.LENS_FACING_FRONT}, 후면${CameraSelector.LENS_FACING_BACK}")
             // 비우기
-            mvm.currentCoordinate.clear()
-            mvm.relativeCoordinate.clear()
-            mvm.tempCoordinateJA = JSONArray()
-            flr?.forEachIndexed { index, faceLandmark ->
-                val scaledX = calculateScreenX(faceLandmark.x())
-                val scaledY = calculateScreenY(faceLandmark.y())
 
-                val jo = JSONObject().apply {
-                    put("index", index)
-                    put("isActive", true)
-                    put("sx", scaledX)
-                    put("sy", scaledY)
-                    put("wx", faceLandmark.x())
-                    put("wy", faceLandmark.y())
-                    put("wz", faceLandmark.z())
+            when (seqStep.value) {
+                2, 3 -> {
+
+                    flr?.forEachIndexed { index, faceLandmark ->
+                        val scaledX = calculateScreenX(faceLandmark.x())
+                        val scaledY = calculateScreenY(faceLandmark.y())
+
+                        val jo = JSONObject().apply {
+                            put("index", index)
+//                            put("isActive", true)
+                            put("sx", scaledX)
+                            put("sy", scaledY)
+//                            put("wx", faceLandmark.x())
+//                            put("wy", faceLandmark.y())
+//                            put("wz", faceLandmark.z())
+                        }
+                        // 이 tempCoordinateJA는 영상 녹화가 종료됐을 때, timer가 끝나는 곳에서 저장후 초기화
+                        mvm.tempCoordinateJA.put(jo)
+//                        // 절대좌표
+//                        mvm.currentCoordinate.add(Pair(scaledX, scaledY))
+                        // 상대좌표
+                        mvm.relativeCoordinate.add(Pair(faceLandmark.x(), faceLandmark.y()))
+                    }
+                    // seq 1개의 좌표를 담고 tempCoordinates는 초기화
+//                    mvm.coordinatesJA.put(mvm.tempCoordinateJA)
                 }
-                mvm.tempCoordinateJA.put(jo)
-                mvm.currentCoordinate.add(Pair(scaledX, scaledY))
-                mvm.relativeCoordinate.add(Pair(faceLandmark.x(), faceLandmark.y()))
+                else -> {
+                    mvm.currentCoordinate.clear()
+                    mvm.relativeCoordinate.clear()
+                    mvm.tempCoordinateJA = JSONArray()
+                    flr?.forEachIndexed { index, faceLandmark ->
+                        val scaledX = calculateScreenX(faceLandmark.x())
+                        val scaledY = calculateScreenY(faceLandmark.y())
+
+                        val jo = JSONObject().apply {
+                            put("index", index)
+//                            put("isActive", true)
+                            put("sx", scaledX)
+                            put("sy", scaledY)
+//                            put("wx", faceLandmark.x())
+//                            put("wy", faceLandmark.y())
+//                            put("wz", faceLandmark.z())
+                        }
+                        mvm.tempCoordinateJA.put(jo)
+                        // 절대좌표
+                        mvm.currentCoordinate.add(Pair(scaledX, scaledY))
+                        // 상대좌표
+                        mvm.relativeCoordinate.add(Pair(faceLandmark.x(), faceLandmark.y()))
+                    }
+                    // seq 1개의 좌표를 담고 tempCoordinates는 초기화
+                    mvm.coordinatesJA.put(mvm.tempCoordinateJA)
+                }
             }
-            // seq 1개의 좌표를 담고 tempCoordinates는 초기화
-            mvm.coordinatesJA.put(mvm.tempCoordinateJA)
+
+
             val vmFlr = mvm.relativeCoordinate
             when (step) {
                 0 -> {
@@ -1203,46 +1479,54 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 //                    Log.v("제이슨", "${}")
                 }
                 2 -> {
-                    val tiltNoseChinAngle = calculateSlope(vmFlr[1].first , vmFlr[1].second, vmFlr[152].first, vmFlr[152].second)
-                    val tiltTipOfLipsAngle = calculateSlope(vmFlr[61].first , vmFlr[1].second, vmFlr[291].first, vmFlr[291].second)
-                    val mandibularDistance = Pair(
-                        getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[58].first, vmFlr[58].second)),
-                        getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[288].first, vmFlr[288].second))
-                    )
+                    if (mvm.tempStaticJo == null) {
+                        val tiltNoseChinAngle = calculateSlope(vmFlr[1].first , vmFlr[1].second, vmFlr[152].first, vmFlr[152].second)
+                        val tiltTipOfLipsAngle = calculateSlope(vmFlr[61].first , vmFlr[61].second, vmFlr[291].first, vmFlr[291].second)
+                        val mandibularDistance = Pair(
+                            getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second), Pair(vmFlr[58].first, vmFlr[58].second)),
+                            getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second), Pair(vmFlr[288].first, vmFlr[288].second))
+                        )
 
-                    // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
-                    val tempStatic = JSONObject().apply {
-                        put("jaw_left_tilt_nose_chin_vertical_angle", tiltNoseChinAngle)
-                        put("jaw_left_tilt_tip_of_lips_horizontal_angle", tiltTipOfLipsAngle)
-                        put("jaw_left_tilt_left_mandibular_distance", mandibularDistance.second)
-                        put("jaw_left_tilt_right_mandibular_distance", mandibularDistance.first)
-
+                        // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
+                        val tempStatic = JSONObject().apply {
+                            put("jaw_left_tilt_nose_chin_vertical_angle", tiltNoseChinAngle)
+                            put("jaw_left_tilt_tip_of_lips_horizontal_angle", tiltTipOfLipsAngle)
+                            put("jaw_left_tilt_left_mandibular_distance", mandibularDistance.second)
+                            put("jaw_left_tilt_right_mandibular_distance", mandibularDistance.first)
+                        }
+                        // 측정 값 초기화
+                        mvm.tempStaticJo = tempStatic
+                        mvm.staticJA.put(mvm.tempStaticJo)
+                        Log.v("왼쪽 턱 쏠림 각도들", "noseChinAngle: $tiltNoseChinAngle tipOfLipsAngle: $tiltTipOfLipsAngle  mandibularDistance: $mandibularDistance")
                     }
-                    mvm.staticJA.put(tempStatic)
-                    Log.v("왼쪽 턱 쏠림 각도들", "noseChinAngle: $tiltNoseChinAngle tipOfLipsAngle: $tiltTipOfLipsAngle  mandibularDistance: $mandibularDistance")
                 }
                 3 -> {
-                    val tiltNoseChinAngle = calculateSlope(vmFlr[1].first , vmFlr[1].second, vmFlr[152].first, vmFlr[152].second)
-                    val tiltTipOfLipsAngle = calculateSlope(vmFlr[61].first , vmFlr[1].second, vmFlr[291].first, vmFlr[291].second)
-                    val mandibularDistance = Pair(
-                        getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[58].first, vmFlr[58].second)),
-                        getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[288].first, vmFlr[288].second))
-                    )
+                    if (mvm.tempStaticJo == null) {
+                        val tiltNoseChinAngle = calculateSlope(vmFlr[1].first , vmFlr[1].second, vmFlr[152].first, vmFlr[152].second)
+                        val tiltTipOfLipsAngle = calculateSlope(vmFlr[61].first , vmFlr[61].second, vmFlr[291].first, vmFlr[291].second)
+                        val mandibularDistance = Pair(
+                            getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second), Pair(vmFlr[58].first, vmFlr[58].second)),
+                            getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second), Pair(vmFlr[288].first, vmFlr[288].second))
+                        )
 
-                    // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
-                    val tempStatic = JSONObject().apply {
-                        put("jaw_right_tilt_nose_chin_vertical_angle", tiltNoseChinAngle)
-                        put("jaw_right_tilt_tip_of_lips_horizontal_angle", tiltTipOfLipsAngle)
-                        put("jaw_right_tilt_left_mandibular_distance", mandibularDistance.second)
-                        put("jaw_right_tilt_right_mandibular_distance", mandibularDistance.first)
+                        // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
+                        val tempStatic = JSONObject().apply {
+                            put("jaw_right_tilt_nose_chin_vertical_angle", tiltNoseChinAngle)
+                            put("jaw_right_tilt_tip_of_lips_horizontal_angle", tiltTipOfLipsAngle)
+                            put("jaw_right_tilt_left_mandibular_distance", mandibularDistance.second)
+                            put("jaw_right_tilt_right_mandibular_distance", mandibularDistance.first)
 
+                        }
+                        mvm.tempStaticJo = tempStatic
+                        mvm.staticJA.put(mvm.tempStaticJo)
+                        Log.v("왼쪽 턱 쏠림 각도들", "noseChinAngle: $tiltNoseChinAngle tipOfLipsAngle: $tiltTipOfLipsAngle  mandibularDistance: $mandibularDistance")
                     }
-                    mvm.staticJA.put(tempStatic)
-                    Log.v("오른쪽 턱 쏠림 각도들", "noseChinAngle: $tiltNoseChinAngle tipOfLipsAngle: $tiltTipOfLipsAngle  mandibularDistance: $mandibularDistance")
-
                 }
                 4 -> {
-                    val openingLipsDisance = getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second,), Pair(vmFlr[14].first, vmFlr[14].second))
+                    val openingLipsDisance = getNormalizedDistance(Pair(
+                        vmFlr[13].first,
+                        vmFlr[13].second
+                    ), Pair(vmFlr[14].first, vmFlr[14].second))
                     val openingLipsAngle = calculateSlope(vmFlr[13].first , vmFlr[13].second, vmFlr[14].first, vmFlr[14].second)
 
                     // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
@@ -1274,7 +1558,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
 
                 }
             }
-            mvm.currentFaceLandmarks = JSONArray()
         }
     }
     private fun releaseResources() {
@@ -1302,15 +1585,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         }
         binding.tvSeqCount.text = "1 / 6"
         mvm.staticFileNames.clear()
-//        mvm.static1FileName = null
-//        mvm.mergedJson0 = JSONObject()
-//        mvm.mergedJson1 = JSONObject()
-//        mvm.staticJson0 = JSONObject()
-//        mvm.staticJson1 = JSONObject()
-//        mvm.coordinates0 = JSONArray()
-//        mvm.coordinates1 = JSONArray()
         mvm.currentCoordinate = mutableListOf()
-        mvm.currentFaceLandmarks = JSONArray()
         ivm.nameValue.value = ""
         ivm.mobileValue.value = ""
         ivm.isShownBtn = false
@@ -1345,7 +1620,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
         return originJo.apply {
             put("temp_server_sn", prefsUtil.getLastTempServerSn())
             put("media_file_name", mvm.staticFileNames[seq])
-            put("json_file_name", mvm.staticFileNames[seq].replace(".jpg", ".json"))
+            put("json_file_name", mvm.staticFileNames[seq].replace(".jpg", ".json").replace(".mp4", ".json"))
             put("seq", seq)
             put("user_uuid", mvm.currentUUID)
             put("user_name", ivm.nameValue.value.toString())

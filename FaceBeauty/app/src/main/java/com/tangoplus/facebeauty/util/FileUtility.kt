@@ -50,11 +50,11 @@ object FileUtility {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
                 arrayOf(
                     Manifest.permission.CAMERA,
-//                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.RECORD_AUDIO,
                     Manifest.permission.READ_MEDIA_IMAGES,
-//                    Manifest.permission.READ_MEDIA_VIDEO,
-//                    Manifest.permission.READ_MEDIA_AUDIO,
-//                    Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    Manifest.permission.READ_MEDIA_VIDEO,
+                    Manifest.permission.READ_MEDIA_AUDIO,
+                    Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
 //                    Manifest.permission.POST_NOTIFICATIONS,
 //                    Manifest.permission.USE_EXACT_ALARM
                 )
@@ -62,10 +62,10 @@ object FileUtility {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
                 arrayOf(
                     Manifest.permission.CAMERA,
-//                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.RECORD_AUDIO,
                     Manifest.permission.READ_MEDIA_IMAGES,
-//                    Manifest.permission.READ_MEDIA_VIDEO,
-//                    Manifest.permission.READ_MEDIA_AUDIO,
+                    Manifest.permission.READ_MEDIA_VIDEO,
+                    Manifest.permission.READ_MEDIA_AUDIO,
                     Manifest.permission.POST_NOTIFICATIONS,
 //                    Manifest.permission.SCHEDULE_EXACT_ALARM
                 )
@@ -73,7 +73,7 @@ object FileUtility {
             else -> {
                 arrayOf(
                     Manifest.permission.CAMERA,
-//                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.RECORD_AUDIO,
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
                 )
@@ -119,7 +119,27 @@ object FileUtility {
             JSONObject(jsonString)
         } ?: JSONObject()
     }
+    fun getVideoUriFromFileName(context: Context, fileName: String): Uri? {
+        val collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        val projection = arrayOf(MediaStore.Video.Media._ID)
+        val selection = "${MediaStore.Video.Media.DISPLAY_NAME} = ?"
+        val selectionArgs = arrayOf(fileName)
 
+        context.contentResolver.query(
+            collection,
+            projection,
+            selection,
+            selectionArgs,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+                val id = cursor.getLong(idColumn)
+                return ContentUris.withAppendedId(collection, id)
+            }
+        }
+        return null
+    }
     fun getImageUriFromFileName(context: Context, fileName: String): Uri? {
         val collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         val projection = arrayOf(MediaStore.Images.Media._ID)
@@ -181,9 +201,5 @@ object FileUtility {
         val scrollTo = scrollY + viewTop - scrollViewTop
         nsv.smoothScrollTo(0, scrollTo)
     }
-
-    val allLabels = setOf<String>(
-
-    )
 
 }

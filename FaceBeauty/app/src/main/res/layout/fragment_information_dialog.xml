@@ -353,6 +353,32 @@
                 android:id="@+id/ssiv1"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
+
+            <FrameLayout
+                android:id="@+id/flMTD1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <com.google.android.exoplayer2.ui.PlayerView
+                    android:id="@+id/pvMTD1"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:auto_show="false"
+                    app:controller_layout_id="@layout/exo_player_control_view"
+                    app:resize_mode="fit"
+                    app:surface_type="surface_view"
+                    app:use_controller="true" />
+
+                <com.tangoplus.facebeauty.ui.view.OverlayView
+                    android:id="@+id/ovMTD1"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    app:layout_constraintBottom_toBottomOf="@id/flMTD1"
+                    app:layout_constraintEnd_toEndOf="@id/flMTD1"
+                    app:layout_constraintStart_toStartOf="@id/flMTD1"
+                    app:layout_constraintTop_toTopOf="@id/flMTD1" />
+            </FrameLayout>
         </androidx.cardview.widget.CardView>
 
         <androidx.cardview.widget.CardView
@@ -373,6 +399,32 @@
                 android:id="@+id/ssiv2"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
+
+            <FrameLayout
+                android:id="@+id/flMTD2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <com.google.android.exoplayer2.ui.PlayerView
+                    android:id="@+id/pvMTD2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:auto_show="false"
+                    app:controller_layout_id="@layout/exo_player_control_view"
+                    app:resize_mode="fit"
+                    app:surface_type="surface_view"
+                    app:use_controller="true" />
+
+                <com.tangoplus.facebeauty.ui.view.OverlayView
+                    android:id="@+id/ovMTD2"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    app:layout_constraintBottom_toBottomOf="@id/flMTD2"
+                    app:layout_constraintEnd_toEndOf="@id/flMTD2"
+                    app:layout_constraintStart_toStartOf="@id/flMTD2"
+                    app:layout_constraintTop_toTopOf="@id/flMTD2" />
+            </FrameLayout>
         </androidx.cardview.widget.CardView>
 
         <ImageButton
