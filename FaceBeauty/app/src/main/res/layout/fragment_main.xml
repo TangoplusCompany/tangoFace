@@ -7,6 +7,12 @@
     android:layout_height="match_parent"
     tools:context=".ui.MainFragment">
     <!--tools:openDrawer="start"-->
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="jsonObject있나요?" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/clMNavi"
         android:layout_width="280dp"
@@ -237,10 +243,13 @@
                 android:layout_marginStart="30dp"
                 android:layout_marginTop="20dp"
                 android:layout_marginEnd="30dp"
+                android:layout_marginBottom="80dp"
                 android:visibility="visible"
+                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/sflM" />
+                app:layout_constraintTop_toBottomOf="@+id/sflM"
+                app:layout_constraintVertical_bias="0.0" />
 
             <TextView
                 android:id="@+id/textView"

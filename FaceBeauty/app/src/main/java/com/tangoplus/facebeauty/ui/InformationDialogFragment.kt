@@ -2,6 +2,7 @@ package com.tangoplus.facebeauty.ui
 
 import android.graphics.Color
 import android.icu.text.DecimalFormat
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -12,8 +13,14 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.skydoves.balloon.ArrowPositionRules
 import com.skydoves.balloon.Balloon
 import com.skydoves.balloon.BalloonAnimation
@@ -23,18 +30,23 @@ import com.tangoplus.facebeauty.R
 import com.tangoplus.facebeauty.data.DrawLine
 import com.tangoplus.facebeauty.data.DrawRatioLine
 import com.tangoplus.facebeauty.data.FaceComparisonItem
+import com.tangoplus.facebeauty.data.FaceLandmarkResult.Companion.fromFaceCoordinates
 import com.tangoplus.facebeauty.databinding.FragmentInformationDialogBinding
 import com.tangoplus.facebeauty.ui.adapter.FaceStaticRVAdapter
 import com.tangoplus.facebeauty.ui.view.GridSpacingItemDecoration
 import com.tangoplus.facebeauty.ui.listener.OnAdapterMoreClickListener
 import com.tangoplus.facebeauty.ui.listener.OnFaceStaticCheckListener
+import com.tangoplus.facebeauty.ui.view.OverlayView
 import com.tangoplus.facebeauty.util.BitmapUtility.extractFaceCoordinates
 import com.tangoplus.facebeauty.util.BitmapUtility.setImage
 import com.tangoplus.facebeauty.util.FileUtility.setOnSingleClickListener
 import com.tangoplus.facebeauty.util.FileUtility.toFaceStatic
 import com.tangoplus.facebeauty.util.MathHelpers.calculateRatios
+import com.tangoplus.facebeauty.util.VideoUtility.extractVideoCoordinates
+import com.tangoplus.facebeauty.util.VideoUtility.getVideoDimensions
 import com.tangoplus.facebeauty.vm.InformationViewModel
 import com.tangoplus.facebeauty.vm.MainViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -46,7 +58,12 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 //    private val mvm : MeasureViewModel by activityViewModels()
     private val ivm : InformationViewModel by activityViewModels()
     private val mvm : MainViewModel by activityViewModels()
-
+    private var simpleExoPlayer1: SimpleExoPlayer? = null
+    private var simpleExoPlayer2: SimpleExoPlayer? = null
+    private val onPlayer1Ready = MutableLiveData(false)
+    private val onPlayer2Ready = MutableLiveData(false)
+    private var leftPlayBackPosition  = 0L
+    private var rightPlayBackPosition = 0L
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -288,8 +305,39 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
             ivm.getSeqIndex() to ivm.getSeqIndex()
         }
         if (leftJA != null && rightJA != null) {
-            val leftValue = leftJA.getJSONObject(leftSeq).getJSONObject("data")
-            val rightValue = rightJA.getJSONObject(rightSeq).getJSONObject("data")
+            val leftValue = if (!isComparison) {
+                when (ivm.getSeqIndex()) {
+                    1 ->  leftJA.getJSONArray(leftSeq).getJSONObject(0)
+                    else -> leftJA.getJSONObject(leftSeq).getJSONObject("data")
+                }
+            } else {
+                when (ivm.getSeqIndex()) {
+                    2, 3 ->  leftJA.getJSONArray(leftSeq).getJSONObject(0)
+                    else -> leftJA.getJSONObject(leftSeq).getJSONObject("data")
+                }
+            }
+
+            val rightValue = if (!isComparison) {
+                when (ivm.getSeqIndex()) {
+                    1 -> {
+                        rightJA.getJSONArray(rightSeq).getJSONObject(0)
+                    }
+                    else -> {
+                        rightJA.getJSONObject(rightSeq).getJSONObject("data")
+                    }
+                }
+            } else {
+                when (ivm.getSeqIndex()) {
+                    2, 3 -> {
+                        rightJA.getJSONArray(rightSeq).getJSONObject(0)
+                    }
+                    else -> {
+                        rightJA.getJSONObject(rightSeq).getJSONObject("data")
+                    }
+                }
+
+            }
+
             return if (isComparison) {
                 when (ivm.getSeqIndex()) {
                     0 -> {
@@ -323,18 +371,18 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                     }
                     2 -> {
                         listOf(
-                            FaceComparisonItem("코 - 턱", leftValue.getDouble("jaw_left_tilt_nose_chin_vertical_angle").toFloat(), rightValue.getDouble("jaw_left_tilt_nose_chin_vertical_angle").toFloat()),
-                            FaceComparisonItem("양 입술", leftValue.getDouble("jaw_left_tilt_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("jaw_left_tilt_tip_of_lips_horizontal_angle").toFloat()),
-                            FaceComparisonItem("왼쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_left_mandibular_distance").toFloat(), rightValue.getDouble("jaw_left_tilt_left_mandibular_distance").toFloat()),
-                            FaceComparisonItem("오른쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_right_mandibular_distance").toFloat(), rightValue.getDouble("jaw_left_tilt_right_mandibular_distance").toFloat()),
+//                            FaceComparisonItem("코 - 턱", leftValue.getDouble("jaw_left_tilt_nose_chin_vertical_angle").toFloat(), rightValue.getDouble("jaw_left_tilt_nose_chin_vertical_angle").toFloat()),
+//                            FaceComparisonItem("양 입술", leftValue.getDouble("jaw_left_tilt_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("jaw_left_tilt_tip_of_lips_horizontal_angle").toFloat()),
+//                            FaceComparisonItem("왼쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_left_mandibular_distance").toFloat(), rightValue.getDouble("jaw_left_tilt_left_mandibular_distance").toFloat()),
+//                            FaceComparisonItem("오른쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_right_mandibular_distance").toFloat(), rightValue.getDouble("jaw_left_tilt_right_mandibular_distance").toFloat()),
                         )
                     }
                     3 -> {
                         listOf(
-                            FaceComparisonItem("코 - 턱", leftValue.getDouble("jaw_right_tilt_nose_chin_vertical_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_nose_chin_vertical_angle").toFloat()),
-                            FaceComparisonItem("양 입술", leftValue.getDouble("jaw_right_tilt_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_tip_of_lips_horizontal_angle").toFloat()),
-                            FaceComparisonItem("왼쪽 중간 턱", leftValue.getDouble("jaw_right_tilt_left_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_left_mandibular_distance").toFloat()),
-                            FaceComparisonItem("오른쪽 중간 턱", leftValue.getDouble("jaw_right_tilt_right_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_right_mandibular_distance").toFloat()),
+//                            FaceComparisonItem("코 - 턱", leftValue.getDouble("jaw_right_tilt_nose_chin_vertical_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_nose_chin_vertical_angle").toFloat()),
+//                            FaceComparisonItem("양 입술", leftValue.getDouble("jaw_right_tilt_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_tip_of_lips_horizontal_angle").toFloat()),
+//                            FaceComparisonItem("왼쪽 중간 턱", leftValue.getDouble("jaw_right_tilt_left_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_left_mandibular_distance").toFloat()),
+//                            FaceComparisonItem("오른쪽 중간 턱", leftValue.getDouble("jaw_right_tilt_right_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_right_mandibular_distance").toFloat()),
                         )
                     }
                     4 -> {
@@ -370,10 +418,10 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                     }
                     1 -> {
                         listOf(
-                            FaceComparisonItem("코 - 턱", leftValue.getDouble("jaw_left_tilt_nose_chin_vertical_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_nose_chin_vertical_angle").toFloat()),
-                            FaceComparisonItem("양 입술", leftValue.getDouble("jaw_left_tilt_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_tip_of_lips_horizontal_angle").toFloat()),
-                            FaceComparisonItem("왼쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_left_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_left_mandibular_distance").toFloat()),
-                            FaceComparisonItem("오른쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_right_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_right_mandibular_distance").toFloat()),
+//                            FaceComparisonItem("코 - 턱", leftValue.getDouble("jaw_left_tilt_nose_chin_vertical_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_nose_chin_vertical_angle").toFloat()),
+//                            FaceComparisonItem("양 입술", leftValue.getDouble("jaw_left_tilt_tip_of_lips_horizontal_angle").toFloat(), rightValue.getDouble("jaw_right_tilt_tip_of_lips_horizontal_angle").toFloat()),
+//                            FaceComparisonItem("왼쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_left_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_left_mandibular_distance").toFloat()),
+//                            FaceComparisonItem("오른쪽 중간 턱", leftValue.getDouble("jaw_left_tilt_right_mandibular_distance").toFloat(), rightValue.getDouble("jaw_right_tilt_right_mandibular_distance").toFloat()),
                         )
                     }
                     else -> {
@@ -396,75 +444,95 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         bd.ssiv2.recycle()
         Log.v("setResult", "setResult started")
         val isComparison = mvm.comparisonDoubleItem != null
+//        if (isComparison) {
+//            val leftResult = mvm.comparisonDoubleItem?.first
+//            val rightResult = mvm.comparisonDoubleItem?.second
+//            val result = buildFaceComparisonList(true, leftResult?.results, rightResult?.results)?.toMutableList()
+//            if (result != null) {
+//                ivm.currentFaceComparision = result
+//            }
+//        } else {
+//            val faceStaticJson = mvm.currentResult.value?.results
+//            val result = buildFaceComparisonList(false, faceStaticJson, faceStaticJson)?.toMutableList()
+//            if (result != null) {
+//                ivm.currentFaceComparision = result
+//            }
+//            Log.v("setResult", "result: $result")
+//        }
+//        Log.v("staticDatas", "${ivm.currentFaceComparision}")
+//        val basicInfo = if (isComparison) {
+//            Pair(mvm.comparisonDoubleItem?.first?.regDate!!, mvm.comparisonDoubleItem?.second?.regDate!!)
+//        } else null
+//        val faceStaticAdapter = FaceStaticRVAdapter(ivm.currentFaceComparision, basicInfo, ivm.getSeqIndex())
+//        bd.msGD.setOnCheckedChangeListener { _, isChecked ->
+//            // 리스너 동작
+//            setLinesInImage(isChecked)
+//            faceStaticAdapter.setAllChecked(isChecked)
+//            if (!isChecked) {
+//                ivm.currentCheckedLines.clear()
+//            }
+//        }
+        val seq = ivm.getSeqIndex()
         if (isComparison) {
-            val leftResult = mvm.comparisonDoubleItem?.first
-            val rightResult = mvm.comparisonDoubleItem?.second
-            val result = buildFaceComparisonList(true, leftResult?.results, rightResult?.results)?.toMutableList()
-            if (result != null) {
-                ivm.currentFaceComparision = result
-            }
-        } else {
-            val faceStaticJson = mvm.currentResult.value?.results
-            val result = buildFaceComparisonList(false, faceStaticJson, faceStaticJson)?.toMutableList()
-            if (result != null) {
-                ivm.currentFaceComparision = result
-            }
-            Log.v("setResult", "result: $result")
-
-        }
-        Log.v("staticDatas", "${ivm.currentFaceComparision}")
-        val basicInfo = if (isComparison) {
-            Pair(mvm.comparisonDoubleItem?.first?.regDate!!, mvm.comparisonDoubleItem?.second?.regDate!!)
-        } else null
-        val faceStaticAdapter = FaceStaticRVAdapter(ivm.currentFaceComparision, basicInfo, ivm.getSeqIndex())
-        bd.msGD.setOnCheckedChangeListener { _, isChecked ->
-            // 리스너 동작
-            setLinesInImage(isChecked)
-            faceStaticAdapter.setAllChecked(isChecked)
-            if (!isChecked) {
-                ivm.currentCheckedLines.clear()
-            }
-        }
-        setImage()
-        showZoomInDialogFragment()
-        setRatioCheckSwitch()
-
-
-        bd.rvGD2.apply {
-            while (itemDecorationCount > 0) {
-                removeItemDecorationAt(0)
-            }
-            val spacingPx = (10 * resources.displayMetrics.density).toInt()
-            val specialSpacingPx = (30 * resources.displayMetrics.density).toInt()
-
-            val specialRows = setOf(3) // row index 기준: 0부터 시작
-            addItemDecoration(
-                GridSpacingItemDecoration(
-                spanCount = 3,
-                spacingPx = spacingPx,
-                includeEdge = true,
-                specialRowSpacingPx  = specialSpacingPx,
-                specialRows  = specialRows
-            )
-            )
-
-            faceStaticAdapter.faceStaticCheckListener = this@InformationDialogFragment
-            faceStaticAdapter.adapterMoreClickedListener = this@InformationDialogFragment
-            val layoutManagerr = GridLayoutManager(requireContext(), 3)
-            layoutManager = layoutManagerr
-            layoutManagerr.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                override fun getSpanSize(position: Int): Int {
-                    return when (faceStaticAdapter.getItemViewType(position)) {
-                        FaceStaticRVAdapter.TYPE_MORE -> 3 // 더보기 버튼은 전체 차지
-                        else -> 1 // 일반 아이템은 1칸만 차지
-                    }
+            when (seq) {
+                2, 3 -> {
+                    setVideoUI()
+                    setPlayer1()
+                    setPlayer2()
+                }
+                else -> {
+                    setImage()
+                    showZoomInDialogFragment()
+                    setRatioCheckSwitch()
                 }
             }
-
-//            Log.v("어댑터데이터", "${gvm.currentFaceResults}")
-
-            adapter  = faceStaticAdapter
+        } else {
+            if (seq == 1) {
+                setVideoUI()
+                setPlayer1()
+                setPlayer2()
+            } else {
+                setImage()
+                showZoomInDialogFragment()
+                setRatioCheckSwitch()
+            }
         }
+
+
+
+//        bd.rvGD2.apply {
+//            while (itemDecorationCount > 0) {
+//                removeItemDecorationAt(0)
+//            }
+//            val spacingPx = (10 * resources.displayMetrics.density).toInt()
+//            val specialSpacingPx = (30 * resources.displayMetrics.density).toInt()
+//
+//            val specialRows = setOf(3) // row index 기준: 0부터 시작
+//            addItemDecoration(
+//                GridSpacingItemDecoration(
+//                spanCount = 3,
+//                spacingPx = spacingPx,
+//                includeEdge = true,
+//                specialRowSpacingPx  = specialSpacingPx,
+//                specialRows  = specialRows
+//            )
+//            )
+//
+//            faceStaticAdapter.faceStaticCheckListener = this@InformationDialogFragment
+//            faceStaticAdapter.adapterMoreClickedListener = this@InformationDialogFragment
+//            val layoutManagerr = GridLayoutManager(requireContext(), 3)
+//            layoutManager = layoutManagerr
+//            layoutManagerr.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+//                override fun getSpanSize(position: Int): Int {
+//                    return when (faceStaticAdapter.getItemViewType(position)) {
+//                        FaceStaticRVAdapter.TYPE_MORE -> 3 // 더보기 버튼은 전체 차지
+//                        else -> 1 // 일반 아이템은 1칸만 차지
+//                    }
+//                }
+//            }
+////            Log.v("어댑터데이터", "${gvm.currentFaceResults}")
+//            adapter  = faceStaticAdapter
+//        }
 
     }
 
@@ -674,7 +742,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                     )
 
                 }
-                setImage()
+//                setImage()
                 setResult()
             }
         }
@@ -690,6 +758,183 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
         val info = "$name, $transformMobile"
         bd.tvIdInfo.text = info
     }
+    private fun setVideoUI() {
 
+        bd.ssiv2.apply {
+            recycle()
+            visibility = View.GONE
+        }
+        bd.ssiv1.apply {
+            recycle()
+            visibility = View.GONE
+        }
+        bd.flID1.visibility = View.VISIBLE
+        bd.flID2.visibility = View.VISIBLE
 
+    }
+    private fun setPlayer1() {
+        simpleExoPlayer1 = SimpleExoPlayer.Builder(requireContext()).build()
+        bd.pvID1.player = simpleExoPlayer1
+        bd.pvID1.controllerShowTimeoutMs = 1100
+        val isComparsion = mvm.comparisonDoubleItem != null
+        val currentSeq = ivm.getSeqIndex()
+        val leftUri = when (isComparsion) {
+            true -> mvm.comparisonDoubleItem?.first?.mediaUri?.get(currentSeq)
+            false -> mvm.currentResult.value?.mediaUri?.get(2)
+        }
+        Log.v("leftURI","${mvm.currentResult.value?.mediaUri}")
+        val mediaItem = leftUri?.let { MediaItem.fromUri(it) }
+        val mediaSource = mediaItem?.let {
+            ProgressiveMediaSource.Factory(DefaultDataSourceFactory(requireContext()))
+                .createMediaSource(it)
+        }
+
+        mediaSource.let {
+            if (it != null) {
+                simpleExoPlayer1?.prepare(it)
+            }
+            // 저장된 위치로 정확하게 이동
+            simpleExoPlayer1?.seekTo(0)
+            onPlayer1Ready.value = true
+            simpleExoPlayer1?.playWhenReady = true
+
+        }
+        simpleExoPlayer1?.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                super.onPlaybackStateChanged(playbackState)
+                if (playbackState == Player.STATE_READY) {
+                    val videoDuration = simpleExoPlayer1?.duration ?: 0L
+                    lifecycleScope.launch {
+                        while (simpleExoPlayer1?.isPlaying == true) {
+                            updateOverlay1(videoDuration)
+                            delay(24)
+                        }
+                    }
+                } else if (playbackState == Player.STATE_ENDED) {
+                    rightPlayBackPosition = 0
+
+                }
+            }
+        })
+    }
+
+    private fun setPlayer2() {
+        simpleExoPlayer2 = SimpleExoPlayer.Builder(requireContext()).build()
+        bd.pvID2.player = simpleExoPlayer2
+        bd.pvID2.controllerShowTimeoutMs = 1100
+        lifecycleScope.launch {
+//                    Log.v("VMTrendRight", "${avm.trendRightUri}")
+            val isComparsion = mvm.comparisonDoubleItem != null
+            val currentSeq = ivm.getSeqIndex()
+
+            val rightUri = when (isComparsion) {
+                true -> mvm.comparisonDoubleItem?.second?.mediaUri?.get(currentSeq)
+                false -> mvm.currentResult.value?.mediaUri?.get(3)
+            }
+
+            val mediaItem = rightUri?.let { MediaItem.fromUri(it) }
+            val mediaSource = mediaItem?.let {
+                ProgressiveMediaSource.Factory(DefaultDataSourceFactory(requireContext()))
+                    .createMediaSource(it)
+            }
+
+            mediaSource.let {
+                if (it != null) {
+                    simpleExoPlayer2?.prepare(it)
+                }
+                // 저장된 위치로 정확하게 이동
+                simpleExoPlayer2?.seekTo(0)
+                onPlayer2Ready.value = true
+                simpleExoPlayer2?.playWhenReady = true
+            }
+            simpleExoPlayer2?.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    super.onPlaybackStateChanged(playbackState)
+                    if (playbackState == Player.STATE_READY) {
+
+                        val videoDuration = simpleExoPlayer2?.duration ?: 0L
+                        lifecycleScope.launch {
+                            while (simpleExoPlayer2?.isPlaying == true) {
+                                updateOverlay2(videoDuration)
+                                delay(24)
+                            }
+                        }
+                    } else if (playbackState == Player.STATE_ENDED) {
+                        rightPlayBackPosition = 0
+
+                    }
+                }
+            })
+        }
+    }
+
+    private fun updateOverlay1(videoDuration: Long) {
+        val currentPosition = simpleExoPlayer1?.currentPosition ?: 0L
+        val isComparsion = mvm.comparisonDoubleItem != null
+        val currentSeq = ivm.getSeqIndex()
+
+        val currentJO = when (isComparsion) {
+            true -> mvm.comparisonDoubleItem?.first?.results?.getJSONObject(currentSeq)
+            false -> mvm.currentResult.value?.results?.getJSONObject(2)
+        }
+        val totalFrames = currentJO?.optJSONArray("face_landmark")?.length() ?: 0
+        val frameIndex = ((currentPosition.toFloat() / videoDuration) * totalFrames).toInt()
+
+        val coordinates = currentJO?.let { extractVideoCoordinates(it) }
+        val leftUri = when (isComparsion) {
+            true -> mvm.comparisonDoubleItem?.first?.mediaUri?.get(currentSeq)
+            false -> mvm.currentResult.value?.mediaUri?.get(2)
+        }
+
+        val (videoWidth, videoHeight) = getVideoDimensions(requireContext(), leftUri)
+        if (frameIndex in 0 until totalFrames) {
+
+            val faceLandmarkResult = fromFaceCoordinates(coordinates?.get(frameIndex))
+            requireActivity().runOnUiThread {
+                bd.ovID1.scaleX = -1f
+                bd.ovID1.setResults(
+                    faceLandmarkResult,
+                    videoWidth,
+                    videoHeight,
+                    OverlayView.RunningMode.VIDEO
+                )
+                bd.ovID1.invalidate()
+            }
+        }
+    }
+    private fun updateOverlay2(videoDuration: Long) {
+        val currentPosition = simpleExoPlayer2?.currentPosition ?: 0L
+        val isComparsion = mvm.comparisonDoubleItem != null
+        val currentSeq = ivm.getSeqIndex()
+
+        val currentJO = when (isComparsion) {
+            true -> mvm.comparisonDoubleItem?.second?.results?.getJSONObject(currentSeq)
+            false -> mvm.currentResult.value?.results?.getJSONObject(3)
+        }
+        // TODO overlay 그리기 
+        val totalFrames = currentJO?.optJSONArray("face_landmark")?.length() ?: 0
+        val frameIndex = ((currentPosition.toFloat() / videoDuration) * totalFrames).toInt()
+
+        val coordinates = currentJO?.let { extractVideoCoordinates(it) }
+        val rightUri = when (isComparsion) {
+            true -> mvm.comparisonDoubleItem?.second?.mediaUri?.get(currentSeq)
+            false -> mvm.currentResult.value?.mediaUri?.get(3)
+        }
+
+        val (videoWidth, videoHeight) = getVideoDimensions(requireContext(), rightUri)
+        if (frameIndex in 0 until totalFrames) {
+            val faceLandmarkResult = fromFaceCoordinates(coordinates?.get(frameIndex))
+            Log.v("랜드마크확인", "${faceLandmarkResult.landmarks}")
+            requireActivity().runOnUiThread {
+                bd.ovID2.scaleX = -1f
+                bd.ovID2.setResults(
+                    faceLandmarkResult,
+                    videoWidth,
+                    videoHeight,
+                    OverlayView.RunningMode.VIDEO
+                )
+                bd.ovID2.invalidate()
+            }
+        }
+    }
 }

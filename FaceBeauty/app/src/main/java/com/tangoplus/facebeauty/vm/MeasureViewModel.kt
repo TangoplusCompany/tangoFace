@@ -16,7 +16,7 @@ class MeasureViewModel : ViewModel() {
     var tempStaticJo : JSONObject? = null
     // 중간 임시 저장 좌표들 ( seq 1개씩만 )
     var tempCoordinateJA = JSONArray()
-
+    var videoTempCoordinatesJA = JSONArray()
     // 측정 완료 시 저장할 좌표임 seq 6개 전부 들어가는 곳
     var coordinatesJA = JSONArray()
     // 현재 얼굴 좌표들 전부 담는 곳 (형식은 coordinatesJA와 같음)

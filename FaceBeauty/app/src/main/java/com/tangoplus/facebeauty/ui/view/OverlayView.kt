@@ -12,6 +12,7 @@ import androidx.core.graphics.toColorInt
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+import com.tangoplus.facebeauty.data.FaceLandmarkResult
 import com.tangoplus.facebeauty.vm.MeasureViewModel
 import kotlin.math.max
 import kotlin.math.min
@@ -19,7 +20,7 @@ import kotlin.math.min
 class OverlayView(context: Context?, attrs: AttributeSet?) :
     View(context, attrs) {
 
-    private var results: FaceLandmarkerResult? = null
+    private var results: FaceLandmarkResult? = null
     private var outLinePaint = Paint()
     private var standardPaint = Paint()
     private var notStandardPaint = Paint()
@@ -58,7 +59,9 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         invalidate()
         initPaints()
     }
-
+    enum class RunningMode {
+        IMAGE, VIDEO, LIVE_STREAM
+    }
     private fun initPaints() {
 
         standardPaint = Paint().apply {
@@ -88,7 +91,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         super.draw(canvas)
 
         // Clear previous drawings if results exist but have no face landmarks
-        if (results?.faceLandmarks().isNullOrEmpty()) {
+        if (results?.landmarks.isNullOrEmpty()) {
             clear()
             return
         }
@@ -100,17 +103,17 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 
             val offsetX = (width - scaledImageWidth) / 2f
             val offsetY = (height - scaledImageHeight) / 2f
-
-            faceLandmarkerResult.faceLandmarks().forEach { faceLandmarks ->
-                drawFaceLandmarks(canvas, faceLandmarks, offsetX, offsetY)
-            }
+            drawFaceLandmarks(canvas, faceLandmarkerResult.landmarks, offsetX, offsetY)
+//            faceLandmarkerResult.landmarks.forEach { faceLandmarks ->
+//
+//            }
         }
     }
 
 
     private fun drawFaceLandmarks(
         canvas: Canvas,
-        faceLandmarks: List<NormalizedLandmark>,
+        faceLandmarks: List<FaceLandmarkResult.FaceLandmark>,
         offsetX: Float,
         offsetY: Float
     ) {
@@ -138,11 +141,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         // --------------------------# 10 - 1 - 152 양귓볼 - 코 #------------------------------
         val horizontalEarFlapIndexes = listOf(234, 1, 454)
         val horizontalEarFlapLinePath = Path()
-
         val horizontalPoints = horizontalEarFlapIndexes.map { landmarkIndex ->
             val landmark = faceLandmarks[landmarkIndex]
-            val x = landmark.x() * imageWidth * scaleFactor + offsetX
-            val y = landmark.y() * imageHeight * scaleFactor + offsetY
+            val x = landmark.x * imageWidth * scaleFactor + offsetX
+            val y = landmark.y * imageHeight * scaleFactor + offsetY
             PointF(x, y)
         }
         if (horizontalPoints.isNotEmpty()) {
@@ -169,8 +171,8 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         val verticalPath = Path()
         val verticalPoints = verticalIndexes.map { landmarkIndex ->
             val landmark = faceLandmarks[landmarkIndex]
-            val x = landmark.x() * imageWidth * scaleFactor + offsetX
-            val y = landmark.y() * imageHeight * scaleFactor + offsetY
+            val x = landmark.x * imageWidth * scaleFactor + offsetX
+            val y = landmark.y * imageHeight * scaleFactor + offsetY
             PointF(x, y)
         }
         if (verticalPoints.isNotEmpty()) {
@@ -193,7 +195,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     }
 
     fun setResults(
-        faceLandmarkerResults: FaceLandmarkerResult,
+        faceLandmarkerResults: FaceLandmarkResult,
         imageHeight: Int,
         imageWidth: Int,
         runningMode: RunningMode = RunningMode.IMAGE

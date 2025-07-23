@@ -11,6 +11,7 @@ import android.graphics.Paint
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 import android.view.View
 import androidx.core.widget.NestedScrollView
 import com.google.gson.Gson
@@ -165,7 +166,6 @@ object FileUtility {
         val projection = arrayOf(MediaStore.Files.FileColumns._ID)
         val selection = "${MediaStore.Files.FileColumns.DISPLAY_NAME} = ? AND ${MediaStore.Files.FileColumns.RELATIVE_PATH} = ?"
         val selectionArgs = arrayOf(fileName, "Documents/TangoPlus/") // 경로 끝에 `/` 포함해야 안정적
-
         context.contentResolver.query(
             collection,
             projection,

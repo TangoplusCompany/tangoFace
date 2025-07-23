@@ -13,6 +13,7 @@ import com.tangoplus.facebeauty.data.db.FaceDatabase
 import com.tangoplus.facebeauty.data.db.FaceStatic
 import com.tangoplus.facebeauty.util.FileUtility.getImageUriFromFileName
 import com.tangoplus.facebeauty.util.FileUtility.getJsonUriFromFileName
+import com.tangoplus.facebeauty.util.FileUtility.getVideoUriFromFileName
 import com.tangoplus.facebeauty.util.FileUtility.readJsonFromUri
 import com.tangoplus.facebeauty.vision.face.FaceLandmarkerHelper
 import kotlinx.coroutines.Dispatchers
@@ -139,17 +140,22 @@ class MainViewModel : ViewModel() {
 
 
     fun convertToFaceResult(context: Context, faceStatics: List<FaceStatic>): FaceResult {
-        val imageUris = mutableListOf<Uri?>()
+        val mediaUri = mutableListOf<Uri?>()
         val jsonArray = JSONArray()
 
-        faceStatics.forEach { faceStatic ->
+        faceStatics.forEachIndexed { indexx ,faceStatic ->
             // 1. mediaFileUri를 Uri로 변환해서 추가
             try {
-                val imageUri = getImageUriFromFileName(context, faceStatic.media_file_name)
-//                Log.v("imageUri있나요?", "$imageUri, ${faceStatic.mediaFileName} ${faceStatic.user_name}/${faceStatic.user_mobile}")
-                imageUris.add(imageUri)
+                Log.v("영상URI", "$indexx ${faceStatic.media_file_name}")
+                if (indexx in listOf(2, 3)) {
+                    val videoUri = getVideoUriFromFileName(context, faceStatic.media_file_name)
+                    mediaUri.add(videoUri)
+                } else {
+                    val imageUri = getImageUriFromFileName(context, faceStatic.media_file_name)
+                    mediaUri.add(imageUri)
+                }
             } catch (e: Exception) {
-                imageUris.add(null)
+                mediaUri.add(null)
                 Log.e("FaceResultConverter", "이미지 URI 파싱 실패: ${faceStatic.media_file_name}", e)
             }
 
@@ -157,7 +163,7 @@ class MainViewModel : ViewModel() {
             try {
                 val jsonUri = getJsonUriFromFileName(context, faceStatic.json_file_name)
                 val jsonObject = jsonUri?.let { readJsonFromUri(context, it) }
-//                Log.v("jsonObject있나요?", "${faceStatic.jsonFileName} $jsonUri ${faceStatic.user_name}/${faceStatic.user_mobile}, $jsonObject")
+                Log.v("jsonObject있나요?", "$jsonObject")
                 jsonArray.put(jsonObject)
             } catch (e: Exception) {
                 Log.e("FaceResultConverter", "JSON 파일 읽기 실패: ${faceStatic.json_file_name}", e)
@@ -165,12 +171,11 @@ class MainViewModel : ViewModel() {
                 jsonArray.put(JSONObject())
             }
         }
-        Log.v("results?", "${jsonArray.length()}")
         return FaceResult(
             tempServerSn = faceStatics[0].temp_server_sn,
             userName = faceStatics[0].user_name,
             userMobile = faceStatics[0].user_mobile,
-            mediaUri = imageUris,
+            mediaUri = mediaUri,
             results = jsonArray,
             regDate = faceStatics[0].reg_date
         )

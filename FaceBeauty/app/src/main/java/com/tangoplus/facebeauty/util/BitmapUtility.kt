@@ -56,12 +56,11 @@ object BitmapUtility {
             val bitmap = BitmapFactory.decodeStream(
                 imageUri?.let { fragment.requireContext().contentResolver.openInputStream(it) }
             )
-            // TODO 볼 면적에 대해서 수정해야함
             fragment.lifecycleScope.launch(Dispatchers.Main) {
                 if (!isSet) {
                     val faceLandmarkResult = fromFaceCoordinates(faceCoordinates)
                     val poseLandmarkResult = fromPoseCoordinates(poseCoordinates)
-                    Log.v("jsonData", "${jsonData.getJSONObject("data")}")
+
                     val leftCheekValue = when (seq) {
                         0 -> jsonData.getJSONObject("data").getDouble("resting_left_cheeks_extent")
                         1 -> jsonData.getJSONObject("data").getDouble("occlusal_left_cheeks_extent")
@@ -662,10 +661,10 @@ object BitmapUtility {
         val poseData = jsonData?.optJSONArray("face_landmark")
         return if (poseData != null) {
             List(poseData.length()) { i ->
-                val landmark = poseData.getJSONObject(i)
+                val landmark = poseData.getJSONArray(i)
                 Pair(
-                    landmark.getDouble("sx").toFloat(),
-                    landmark.getDouble("sy").toFloat()
+                    landmark.getDouble(1).toFloat(),
+                    landmark.getDouble(2).toFloat()
                 )
             }
         } else null
