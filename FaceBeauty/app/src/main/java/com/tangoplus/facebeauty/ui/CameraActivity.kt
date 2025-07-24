@@ -1311,7 +1311,8 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
             )
         }
     }
-
+    private val leftCheeks = listOf(197, 127, 234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152)
+    private val rightCheeks = listOf(197, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152)
     fun resultBundleToJson(resultBundle: FaceLandmarkerHelper.ResultBundle?, step: Int) {
         if (scaleFactorX == null && scaleFactorY == null) {
             val inputWidth = latestResult?.inputImageWidth
@@ -1416,8 +1417,7 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         calculateSlope(vmFlr[64].first, vmFlr[64].second, vmFlr[61].first, vmFlr[61].second),
                         calculateSlope(vmFlr[291].first, vmFlr[291].second, vmFlr[294].first, vmFlr[294].second)
                     )
-                    val leftCheeks = listOf(197, 127, 234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152)
-                    val rightCheeks = listOf(197, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152)
+
                     val leftCheeksPoint = leftCheeks.map { mvm.currentCoordinate[it] }
                     val rightCheeksPoint = rightCheeks.map { mvm.currentCoordinate[it] }
                     val cheeksExtents = Pair(
@@ -1461,8 +1461,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                         calculateSlope(vmFlr[64].first, vmFlr[64].second, vmFlr[61].first, vmFlr[61].second),
                         calculateSlope(vmFlr[291].first, vmFlr[291].second, vmFlr[294].first, vmFlr[294].second)
                     )
-                    val leftCheeks = listOf(197, 127, 234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152)
-                    val rightCheeks = listOf(197, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152)
                     val leftCheeksPoint = leftCheeks.map { mvm.currentCoordinate[it] }
                     val rightCheeksPoint = rightCheeks.map { mvm.currentCoordinate[it] }
                     val cheeksExtents = Pair(
@@ -1517,14 +1515,20 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                             getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second), Pair(vmFlr[58].first, vmFlr[58].second)),
                             getNormalizedDistance(Pair(vmFlr[13].first, vmFlr[13].second), Pair(vmFlr[288].first, vmFlr[288].second))
                         )
-
+                        val leftCheeksPoint = leftCheeks.map { mvm.currentCoordinate[it] }
+                        val rightCheeksPoint = rightCheeks.map { mvm.currentCoordinate[it] }
+                        val cheeksExtents = Pair(
+                            calculatePolygonArea(leftCheeksPoint),
+                            calculatePolygonArea(rightCheeksPoint)
+                        )
                         // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
                         val tempStatic = JSONObject().apply {
                             put("jaw_right_tilt_nose_chin_vertical_angle", tiltNoseChinAngle)
                             put("jaw_right_tilt_tip_of_lips_horizontal_angle", tiltTipOfLipsAngle)
                             put("jaw_right_tilt_left_mandibular_distance", mandibularDistance.second)
                             put("jaw_right_tilt_right_mandibular_distance", mandibularDistance.first)
-
+                            put("jaw_opening_lips_left_cheeks_extent", cheeksExtents.second)
+                            put("jaw_opening_lips_right_cheeks_extent", cheeksExtents.first)
                         }
                         mvm.tempStaticJo = tempStatic
                         mvm.staticJA.put(mvm.tempStaticJo)
@@ -1547,7 +1551,6 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     Log.v("입 벌림 각도들", "openingLipsDisance: $openingLipsDisance openingLipsAngle: $openingLipsAngle ")
                 }
                 5 -> {
-
                     val plr = mvm.currentPlrCoordinate
                     Log.v("plr봐보기", "$plr")
                     val shoulderHorizontalAngle = calculateSlope(plr[11].first , plr[11].second, plr[12].first, plr[12].second)
@@ -1556,11 +1559,18 @@ class CameraActivity : AppCompatActivity(), FaceLandmarkerHelper.LandmarkerListe
                     val midShoulder = Pair((plr[11].first + plr[12].first)/ 2, (plr[11].second + plr[12].second) / 2)
                     val neckVerticalAngle = calculateSlope(midShoulder.first , midShoulder.second, vmFlr[1].first, vmFlr[1].second)
 
+                    val leftChinAngle = calculateAngle(vmFlr[234].first, vmFlr[234].second, vmFlr[58].first, vmFlr[58].second, vmFlr[152].first, vmFlr[152].second)
+                    val rightChinAngle = calculateAngle(vmFlr[454].first, vmFlr[454].second, vmFlr[288].first, vmFlr[288].second, vmFlr[152].first, vmFlr[152].second)
+                    val middleChinAngle = calculateAngle(vmFlr[58].first, vmFlr[58].second, vmFlr[152].first, vmFlr[152].second, vmFlr[288].first, vmFlr[288].second)
+
                     // 양쪾을 벌렸을 때 7.2 안벌렸을 때 4.6
                     val tempStatic = JSONObject().apply {
                         put("neck_extention_shoulder_horizontal_angle", shoulderHorizontalAngle)
                         put("neck_extention_ear_horizontal_angle", earHorizontalAngle)
                         put("neck_extention_neck_vertical_angle", neckVerticalAngle)
+                        put("neck_extention_shoulder_horizontal_angle", leftChinAngle)
+                        put("neck_extention_ear_horizontal_angle", rightChinAngle)
+                        put("neck_extention_neck_vertical_angle", middleChinAngle)
                     }
                     mvm.staticJA.put(tempStatic)
                     Log.v("고개 젖힘", "shoulderHorizontalAngle: $shoulderHorizontalAngle earHorizontalAngle: $earHorizontalAngle  neckVerticalAngle: $neckVerticalAngle")

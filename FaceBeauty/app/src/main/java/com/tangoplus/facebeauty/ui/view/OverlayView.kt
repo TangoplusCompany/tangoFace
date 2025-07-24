@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import androidx.core.graphics.toColorInt
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
@@ -30,6 +31,8 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 
     private var verticalLineSuccess = false
     private var horizontalLineSuccess = false
+    private var currentRunningMode: RunningMode = RunningMode.IMAGE
+
 
     fun setVerti(isSuccess: Boolean) {
         verticalLineSuccess = isSuccess
@@ -117,6 +120,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         offsetX: Float,
         offsetY: Float
     ) {
+        Log.v("결과", "${results?.landmarks}")
 
         // x, y에 들어가있는 좌표는?
 //        val faceOutLineIndexes = listOf(
@@ -137,61 +141,140 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 //            }
 //        }
 //        canvas.drawPath(outLinePath, outLinePaint)
+        when (currentRunningMode) {
+            RunningMode.LIVE_STREAM -> {
+// --------------------------# 10 - 1 - 152 양귓볼 - 코 #------------------------------
+                val horizontalEarFlapIndexes = listOf(234, 1, 454)
+                val horizontalEarFlapLinePath = Path()
+                val horizontalPoints = horizontalEarFlapIndexes.map { landmarkIndex ->
+                    val landmark = faceLandmarks[landmarkIndex]
+                    val x = landmark.x * imageWidth * scaleFactor + offsetX
+                    val y = landmark.y * imageHeight * scaleFactor + offsetY
+                    PointF(x, y)
+                }
+                if (horizontalPoints.isNotEmpty()) {
+                    horizontalEarFlapLinePath.moveTo(horizontalPoints[0].x, horizontalPoints[0].y)
 
-        // --------------------------# 10 - 1 - 152 양귓볼 - 코 #------------------------------
-        val horizontalEarFlapIndexes = listOf(234, 1, 454)
-        val horizontalEarFlapLinePath = Path()
-        val horizontalPoints = horizontalEarFlapIndexes.map { landmarkIndex ->
-            val landmark = faceLandmarks[landmarkIndex]
-            val x = landmark.x * imageWidth * scaleFactor + offsetX
-            val y = landmark.y * imageHeight * scaleFactor + offsetY
-            PointF(x, y)
-        }
-        if (horizontalPoints.isNotEmpty()) {
-            horizontalEarFlapLinePath.moveTo(horizontalPoints[0].x, horizontalPoints[0].y)
+                    for (i in 1 until horizontalPoints.size) {
+                        val prev = horizontalPoints[i - 1]
+                        val curr = horizontalPoints[i]
 
-            for (i in 1 until horizontalPoints.size) {
-                val prev = horizontalPoints[i - 1]
-                val curr = horizontalPoints[i]
+                        // 이전 점과 현재 점의 중간 지점을 목표로 부드럽게 이어줌
+                        val midX = (prev.x + curr.x) / 2
+                        val midY = (prev.y + curr.y) / 2
 
-                // 이전 점과 현재 점의 중간 지점을 목표로 부드럽게 이어줌
-                val midX = (prev.x + curr.x) / 2
-                val midY = (prev.y + curr.y) / 2
+                        horizontalEarFlapLinePath.quadTo(prev.x, prev.y, midX, midY)
+                    }
+                    horizontalEarFlapLinePath.lineTo(horizontalPoints.last().x, horizontalPoints.last().y)
+                }
+                val horizonLinePaint = if (horizontalLineSuccess) standardPaint else notStandardPaint
+                canvas.drawPath(horizontalEarFlapLinePath, horizonLinePaint)
 
-                horizontalEarFlapLinePath.quadTo(prev.x, prev.y, midX, midY)
+
+                // --------------------------# 10 - 1 - 152 이마 - 턱 #------------------------------
+                val verticalIndexes = listOf(10, 1, 152)
+                val verticalPath = Path()
+                val verticalPoints = verticalIndexes.map { landmarkIndex ->
+                    val landmark = faceLandmarks[landmarkIndex]
+                    val x = landmark.x * imageWidth * scaleFactor + offsetX
+                    val y = landmark.y * imageHeight * scaleFactor + offsetY
+                    PointF(x, y)
+                }
+                if (verticalPoints.isNotEmpty()) {
+                    verticalPath.moveTo(verticalPoints[0].x, verticalPoints[0].y)
+
+                    for (i in 1 until verticalPoints.size) {
+                        val prev = verticalPoints[i - 1]
+                        val curr = verticalPoints[i]
+
+                        // 이전 점과 현재 점의 중간 지점을 목표로 부드럽게 이어줌
+                        val midX = (prev.x + curr.x) / 2
+                        val midY = (prev.y + curr.y) / 2
+                        verticalPath.quadTo(prev.x, prev.y, midX, midY)
+                    }
+                    verticalPath.lineTo(verticalPoints.last().x, verticalPoints.last().y)
+                }
+                val vertiLinePaint = if (verticalLineSuccess) standardPaint else notStandardPaint
+                canvas.drawPath(verticalPath, vertiLinePaint)
             }
-            horizontalEarFlapLinePath.lineTo(horizontalPoints.last().x, horizontalPoints.last().y)
-        }
-        val horizonLinePaint = if (horizontalLineSuccess) standardPaint else notStandardPaint
-        canvas.drawPath(horizontalEarFlapLinePath, horizonLinePaint)
+            // --------------------------# video #------------------------------
+            RunningMode.VIDEO -> {
+              //   x, y에 들어가있는 좌표는?
+                val faceOutLineIndexes = listOf(
+                    10, 109, 67, 103, 54, 21, 162, 127, 234, 93, 132, 58, 172, 136, 150, 149, 176, 148,
+                    152, 377, 378, 379, 365, 397, 288, 361, 323, 454, 356, 389, 251, 284, 332, 297, 338, 10
+                )
+                val outLinePath = Path()
+        //        Log.v("얼굴테두리각형갯수", "${faceOutLineIndexes.size}")
+                faceOutLineIndexes.forEachIndexed { i, landmarkIndex ->
+                    val landmark = faceLandmarks[landmarkIndex]
+                    val x = landmark.x
+                    val y = landmark.y
+                    if (i == 0) {
+                        outLinePath.moveTo(x, y) // 시작점
+                    } else {
+                        outLinePath.lineTo(x, y) // 선 연결
+                    }
+                }
+
+                canvas.drawPath(outLinePath, outLinePaint)
+                val horizontalEarFlapIndexes = listOf(234, 1, 454)
+                val horizontalEarFlapLinePath = Path()
+                val horizontalPoints = horizontalEarFlapIndexes.map { landmarkIndex ->
+                    val landmark = faceLandmarks[landmarkIndex]
+                    val x = landmark.x
+                    val y = landmark.y
+                    Log.v("랜드마크 값", "수평: $landmarkIndex: ($x, $y)")
+                    PointF(x, y)
+                }
+                if (horizontalPoints.isNotEmpty()) {
+                    horizontalEarFlapLinePath.moveTo(horizontalPoints[0].x, horizontalPoints[0].y)
+
+                    for (i in 1 until horizontalPoints.size) {
+                        val prev = horizontalPoints[i - 1]
+                        val curr = horizontalPoints[i]
+
+                        // 이전 점과 현재 점의 중간 지점을 목표로 부드럽게 이어줌
+                        val midX = (prev.x + curr.x) / 2
+                        val midY = (prev.y + curr.y) / 2
+
+                        horizontalEarFlapLinePath.quadTo(prev.x, prev.y, midX, midY)
+                    }
+                    horizontalEarFlapLinePath.lineTo(horizontalPoints.last().x, horizontalPoints.last().y)
+                }
+                val horizonLinePaint = if (horizontalLineSuccess) standardPaint else notStandardPaint
+                canvas.drawPath(horizontalEarFlapLinePath, horizonLinePaint)
 
 
-        // --------------------------# 10 - 1 - 152 이마 - 턱 #------------------------------
-        val verticalIndexes = listOf(10, 1, 152)
-        val verticalPath = Path()
-        val verticalPoints = verticalIndexes.map { landmarkIndex ->
-            val landmark = faceLandmarks[landmarkIndex]
-            val x = landmark.x * imageWidth * scaleFactor + offsetX
-            val y = landmark.y * imageHeight * scaleFactor + offsetY
-            PointF(x, y)
-        }
-        if (verticalPoints.isNotEmpty()) {
-            verticalPath.moveTo(verticalPoints[0].x, verticalPoints[0].y)
+                // --------------------------# 10 - 1 - 152 이마 - 턱 #------------------------------
+                val verticalIndexes = listOf(10, 1, 152)
+                val verticalPath = Path()
+                val verticalPoints = verticalIndexes.map { landmarkIndex ->
+                    val landmark = faceLandmarks[landmarkIndex]
+                    val x = landmark.x
+                    val y = landmark.y
+                    Log.v("랜드마크 값", "수직: $landmarkIndex: ($x, $y)")
+                    PointF(x, y)
+                }
+                if (verticalPoints.isNotEmpty()) {
+                    verticalPath.moveTo(verticalPoints[0].x, verticalPoints[0].y)
 
-            for (i in 1 until verticalPoints.size) {
-                val prev = verticalPoints[i - 1]
-                val curr = verticalPoints[i]
+                    for (i in 1 until verticalPoints.size) {
+                        val prev = verticalPoints[i - 1]
+                        val curr = verticalPoints[i]
 
-                // 이전 점과 현재 점의 중간 지점을 목표로 부드럽게 이어줌
-                val midX = (prev.x + curr.x) / 2
-                val midY = (prev.y + curr.y) / 2
-                verticalPath.quadTo(prev.x, prev.y, midX, midY)
+                        // 이전 점과 현재 점의 중간 지점을 목표로 부드럽게 이어줌
+                        val midX = (prev.x + curr.x) / 2
+                        val midY = (prev.y + curr.y) / 2
+                        verticalPath.quadTo(prev.x, prev.y, midX, midY)
+                    }
+                    verticalPath.lineTo(verticalPoints.last().x, verticalPoints.last().y)
+                }
+                val vertiLinePaint = if (verticalLineSuccess) standardPaint else notStandardPaint
+                canvas.drawPath(verticalPath, vertiLinePaint)
             }
-            verticalPath.lineTo(verticalPoints.last().x, verticalPoints.last().y)
+            RunningMode.IMAGE -> {}
         }
-        val vertiLinePaint = if (verticalLineSuccess) standardPaint else notStandardPaint
-        canvas.drawPath(verticalPath, vertiLinePaint)
-
     }
 
     fun setResults(
@@ -204,12 +287,12 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 
         this.imageHeight = imageHeight
         this.imageWidth = imageWidth
-
+        currentRunningMode = runningMode
         scaleFactor = when (runningMode) {
             RunningMode.IMAGE,
-            RunningMode.VIDEO  -> {
-                min(width * 1f / imageWidth, height * 1f / imageHeight)
-            }
+            RunningMode.VIDEO,
+//                min(width * 1f / imageWidth, height * 1f / imageHeight)
+
             RunningMode.LIVE_STREAM -> {
                 // PreviewView is in FILL_START mode. So we need to scale up the
                 // landmarks to match with the size that the captured images will be

@@ -481,6 +481,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                     setPlayer2()
                 }
                 else -> {
+                    setImageUI()
                     setImage()
                     showZoomInDialogFragment()
                     setRatioCheckSwitch()
@@ -492,6 +493,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
                 setPlayer1()
                 setPlayer2()
             } else {
+                setImageUI()
                 setImage()
                 showZoomInDialogFragment()
                 setRatioCheckSwitch()
@@ -768,10 +770,21 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
             recycle()
             visibility = View.GONE
         }
-        bd.flID1.visibility = View.VISIBLE
-        bd.flID2.visibility = View.VISIBLE
-
+        bd.clIDVideo1.visibility = View.VISIBLE
+        bd.clIDVideo2.visibility = View.VISIBLE
     }
+
+    private fun setImageUI() {
+        bd.ssiv2.apply {
+            visibility = View.VISIBLE
+        }
+        bd.ssiv1.apply {
+            visibility = View.VISIBLE
+        }
+        bd.clIDVideo1.visibility = View.GONE
+        bd.clIDVideo2.visibility = View.GONE
+    }
+
     private fun setPlayer1() {
         simpleExoPlayer1 = SimpleExoPlayer.Builder(requireContext()).build()
         bd.pvID1.player = simpleExoPlayer1
@@ -891,7 +904,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
 
             val faceLandmarkResult = fromFaceCoordinates(coordinates?.get(frameIndex))
             requireActivity().runOnUiThread {
-                bd.ovID1.scaleX = -1f
+//                bd.ovID1.scaleX = -1f
                 bd.ovID1.setResults(
                     faceLandmarkResult,
                     videoWidth,
@@ -926,7 +939,7 @@ class InformationDialogFragment : DialogFragment(), OnFaceStaticCheckListener,
             val faceLandmarkResult = fromFaceCoordinates(coordinates?.get(frameIndex))
             Log.v("랜드마크확인", "${faceLandmarkResult.landmarks}")
             requireActivity().runOnUiThread {
-                bd.ovID2.scaleX = -1f
+//                bd.ovID2.scaleX = -1f
                 bd.ovID2.setResults(
                     faceLandmarkResult,
                     videoWidth,

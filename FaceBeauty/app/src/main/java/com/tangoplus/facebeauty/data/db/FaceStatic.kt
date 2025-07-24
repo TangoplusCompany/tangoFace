@@ -53,10 +53,15 @@ data class FaceStatic (
 
     val jaw_opening_lips_distance : Float = 0f,
     val jaw_opening_lips_vertical_angle : Float = 0f,
+    val jaw_opening_lips_left_cheeks_extent : Float = 0f,
+    val jaw_opening_lips_right_cheeks_extent : Float = 0f,
 
     val neck_extention_shoulder_horizontal_angle : Float = 0f,
     val neck_extention_ear_horizontal_angle : Float = 0f,
-    val neck_extention_neck_vertical_angle: Float = 0f
+    val neck_extention_neck_vertical_angle: Float = 0f,
+    val neck_extention_left_mandibular_chin_angle : Float = 0f,
+    val neck_extention_right_mandibular_chin_angle: Float = 0f,
+    val neck_extention_middle_mandibular_chin_angle : Float = 0f
     ) {
     companion object {
         fun getCurrentDateTime(): String =
